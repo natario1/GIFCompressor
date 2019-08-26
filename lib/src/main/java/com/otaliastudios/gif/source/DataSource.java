@@ -34,7 +34,7 @@ public interface DataSource {
 
     /**
      * Called to read contents for the current track type.
-     * Contents should be put inside {@link DataSource.Chunk#buffer}, and the
+     * Contents should be put inside {@link DataSource.Chunk#bitmap}, and the
      * other chunk flags should be filled.
      *
      * @param chunk output chunk

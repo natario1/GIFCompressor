@@ -3,7 +3,7 @@ apply plugin: 'com.github.dcendents.android-maven'
 apply plugin: 'com.jfrog.bintray'
 
 ext {
-    libVersion = '0.1.0'
+    libVersion = '1.0.0'
     libGroup = 'com.otaliastudios.gif'
     libName = 'GIFCompressor'
     libDescription = 'Compresses your GIFs into lightweight MP4 video using fast, hardware accelerated encoders. Supports cropping, rotation, GIF concatenation and much more.'
