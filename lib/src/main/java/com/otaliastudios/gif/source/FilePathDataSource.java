@@ -1,13 +1,12 @@
 package com.otaliastudios.gif.source;
 
-import android.media.MediaExtractor;
-import android.media.MediaMetadataRetriever;
+import android.content.Context;
 
 import com.otaliastudios.gif.internal.Logger;
 
-import java.io.FileDescriptor;
 import java.io.FileInputStream;
-import java.io.IOException;
+import java.io.FileNotFoundException;
+import java.io.InputStream;
 
 import androidx.annotation.NonNull;
 
@@ -18,41 +17,20 @@ public class FilePathDataSource extends DefaultDataSource {
     private static final String TAG = FilePathDataSource.class.getSimpleName();
     private static final Logger LOG = new Logger(TAG);
 
-    private final FileDescriptorDataSource descriptor;
-    private FileInputStream stream;
+    private String path;
 
-    public FilePathDataSource(@NonNull String path) {
-        FileDescriptor fileDescriptor;
+    public FilePathDataSource(@NonNull Context context, @NonNull String path) {
+        super(context);
+        this.path = path;
+    }
+
+    @NonNull
+    @Override
+    protected InputStream openInputStream() {
         try {
-            stream = new FileInputStream(path);
-            fileDescriptor = stream.getFD();
-        } catch (IOException e) {
-            release();
+            return new FileInputStream(path);
+        } catch (FileNotFoundException e) {
             throw new RuntimeException(e);
-        }
-        descriptor = new FileDescriptorDataSource(fileDescriptor);
-    }
-
-    @Override
-    public void applyExtractor(@NonNull MediaExtractor extractor) throws IOException {
-        descriptor.applyExtractor(extractor);
-    }
-
-    @Override
-    public void applyRetriever(@NonNull MediaMetadataRetriever retriever) {
-        descriptor.applyRetriever(retriever);
-    }
-
-    @Override
-    public void release() {
-        super.release();
-        descriptor.release();
-        if (stream != null) {
-            try {
-                stream.close();
-            } catch (IOException e) {
-                LOG.e("Can't close input stream: ", e);
-            }
         }
     }
 }

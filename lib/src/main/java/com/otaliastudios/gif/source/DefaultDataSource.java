@@ -1,123 +1,173 @@
 package com.otaliastudios.gif.source;
 
-import android.media.MediaExtractor;
+import android.content.Context;
 import android.media.MediaFormat;
-import android.media.MediaMetadataRetriever;
 
 import androidx.annotation.NonNull;
 
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.gifdecoder.GifDecoder;
+import com.bumptech.glide.gifdecoder.GifHeader;
+import com.bumptech.glide.gifdecoder.GifHeaderParser;
+import com.bumptech.glide.gifdecoder.StandardGifDecoder;
+import com.bumptech.glide.load.resource.gif.GifBitmapProvider;
 import com.otaliastudios.gif.internal.Logger;
+import com.otaliastudios.gif.internal.MediaFormatConstants;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.lang.reflect.Field;
+import java.util.List;
 
-/**
- * A DataSource implementation that uses Android's Media APIs.
- */
+
 public abstract class DefaultDataSource implements DataSource {
 
     private final static String TAG = DefaultDataSource.class.getSimpleName();
     private final static Logger LOG = new Logger(TAG);
 
-    private final MediaMetadataRetriever mMetadata = new MediaMetadataRetriever();
-    private final MediaExtractor mExtractor = new MediaExtractor();
-    private boolean mMetadataApplied;
-    private boolean mExtractorApplied;
+    private Context mContext;
+    private GifHeader mGifHeader;
+    private GifDecoder mGifDecoder;
+    private int mGifFrame = 0;
+    private int mGifFrames;
     private MediaFormat mFormat;
-    private int mIndex;
-    private long mLastTimestampUs;
-    private long mFirstTimestampUs = Long.MIN_VALUE;
+    private final long mFirstTimestampUs = 10;
+    private long mLastTimestampUs = mFirstTimestampUs;
+    private long mDurationUs = Long.MIN_VALUE;
 
-    private void ensureMetadata() {
-        if (!mMetadataApplied) {
-            mMetadataApplied = true;
-            applyRetriever(mMetadata);
-        }
+    protected DefaultDataSource(@NonNull Context context) {
+        mContext = context.getApplicationContext();
     }
 
-    private void ensureExtractor() {
-        if (!mExtractorApplied) {
-            mExtractorApplied = true;
-            try {
-                applyExtractor(mExtractor);
-            } catch (IOException e) {
-                LOG.e("Got IOException while trying to open MediaExtractor.", e);
-                throw new RuntimeException(e);
+    @NonNull
+    protected abstract InputStream openInputStream();
+
+    private byte[] getInputStreamData() {
+        try {
+            InputStream inputStream = openInputStream();
+            int readBytes;
+            byte[] buffer = new byte[16 * 1024];
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            while ((readBytes = inputStream.read(buffer, 0, buffer.length)) != -1) {
+                outputStream.write(buffer, 0, readBytes);
             }
+            outputStream.flush();
+            byte[] data = outputStream.toByteArray();
+            inputStream.close();
+            outputStream.close();
+            return data;
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
     }
 
-    protected abstract void applyExtractor(@NonNull MediaExtractor extractor) throws IOException;
-
-    protected abstract void applyRetriever(@NonNull MediaMetadataRetriever retriever);
-
-    @Override
-    public void start() {
-        mExtractor.selectTrack(mIndex);
-    }
-
-    @Override
-    public boolean isDrained() {
-        ensureExtractor();
-        return mExtractor.getSampleTrackIndex() < 0;
-    }
-
-    @Override
-    public void readTrack(@NonNull Chunk chunk) {
-        ensureExtractor();
-        chunk.bytes = mExtractor.readSampleData(chunk.buffer, 0);
-        chunk.isKeyFrame = (mExtractor.getSampleFlags() & MediaExtractor.SAMPLE_FLAG_SYNC) != 0;
-        chunk.timestampUs = mExtractor.getSampleTime();
-        mLastTimestampUs = chunk.timestampUs;
-        if (mFirstTimestampUs == Long.MIN_VALUE) {
-            mFirstTimestampUs = mLastTimestampUs;
+    private void ensureGifHeader() {
+        if (mGifHeader != null) return;
+        GifHeaderParser parser = new GifHeaderParser();
+        parser.setData(getInputStreamData());
+        mGifHeader = parser.parseHeader();
+        parser.clear();
+        if (mGifHeader.getStatus() != GifDecoder.STATUS_OK) {
+            throw new RuntimeException("Illegal status: " + mGifHeader.getStatus());
         }
-        mExtractor.advance();
     }
 
-    @Override
-    public long getReadUs() {
-        if (mFirstTimestampUs == Long.MIN_VALUE) {
-            return 0;
-        }
-        return mLastTimestampUs - mFirstTimestampUs;
+    private void ensureGifDecoder() {
+        if (mGifDecoder != null) return;
+        ensureGifHeader();
+        GifDecoder.BitmapProvider provider = new GifBitmapProvider(
+                Glide.get(mContext).getBitmapPool(),
+                Glide.get(mContext).getArrayPool()
+        );
+        mGifDecoder = new StandardGifDecoder(provider);
+        mGifDecoder.setData(mGifHeader, getInputStreamData());
+        mGifFrames = mGifDecoder.getFrameCount() + 1;
     }
 
     @Override
     public long getDurationUs() {
-        ensureMetadata();
-        try {
-            return Long.parseLong(mMetadata
-                    .extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)) * 1000;
-        } catch (NumberFormatException e) {
-            return -1;
+        if (mDurationUs == Long.MIN_VALUE) {
+            ensureGifHeader();
+            long durationUs = 0L;
+            try {
+                Field framesField = GifHeader.class.getDeclaredField("frames");
+                framesField.setAccessible(true);
+                List frames = (List) framesField.get(mGifHeader);
+                Class frameClass = Class.forName("com.bumptech.glide.gifdecoder.GifFrame");
+                Field frameDelayField = frameClass.getDeclaredField("delay");
+                frameDelayField.setAccessible(true);
+                for (Object frame : frames) {
+                    durationUs += frameDelayField.getInt(frame);
+                }
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+            mDurationUs = durationUs;
         }
+        return mDurationUs;
     }
 
     @NonNull
     @Override
     public MediaFormat getTrackFormat() {
-        if (mFormat != null) return mFormat;
-        ensureExtractor();
-        int trackCount = mExtractor.getTrackCount();
-        MediaFormat format = null;
-        for (int i = 0; i < trackCount; i++) {
-            format = mExtractor.getTrackFormat(i);
-            String mime = format.getString(MediaFormat.KEY_MIME);
-            if (mime.startsWith("video/")) {
-                mIndex = i;
-                break;
-            }
+        if (mFormat == null) {
+            ensureGifHeader();
+            mFormat = new MediaFormat();
+            mFormat.setInteger(MediaFormat.KEY_WIDTH, mGifHeader.getWidth());
+            mFormat.setInteger(MediaFormat.KEY_HEIGHT, mGifHeader.getHeight());
+            mFormat.setInteger(MediaFormatConstants.KEY_ROTATION_DEGREES, 0);
+            int frames = mGifHeader.getNumFrames();
+            double durationSeconds = (double) getDurationUs() / 1000000D;
+            int framesPerSecond = (int) Math.round(frames / durationSeconds);
+            mFormat.setInteger(MediaFormat.KEY_FRAME_RATE, framesPerSecond);
         }
-        mFormat = format;
-        return format;
+        return mFormat;
+    }
+
+
+    @Override
+    public void start() {
+        ensureGifDecoder();
+        mGifFrame = -1;
+    }
+
+    @Override
+    public void read(@NonNull Chunk chunk) {
+        mGifDecoder.advance();
+        mGifFrame++;
+        if (mGifFrame == 0) {
+            // First frame.
+            mLastTimestampUs = mFirstTimestampUs;
+            chunk.bitmap = mGifDecoder.getNextFrame();
+        } else if (mGifFrame < mGifDecoder.getFrameCount() - 1) {
+            // Middle frame.
+            mLastTimestampUs += mGifDecoder.getDelay(mGifFrame - 1) * 1000L;
+            chunk.bitmap = mGifDecoder.getNextFrame();
+        } else {
+            // Last frame.
+            // Here we repeat the last bitmap with an increased delay.
+            mLastTimestampUs += mGifDecoder.getDelay(mGifFrame - 1) * 1000L;
+        }
+        chunk.timestampUs = mLastTimestampUs;
     }
 
     @Override
     public void release() {
-        try {
-            mExtractor.release();
-        } catch (Exception e) {
-            LOG.w("Could not release extractor:", e);
+        mGifHeader = null;
+        if (mGifDecoder != null) {
+            mGifDecoder.clear();
+            mGifDecoder = null;
         }
+    }
+
+    @Override
+    public boolean isDrained() {
+        return mGifFrame == mGifFrames - 1;
+    }
+
+    @Override
+    public final long getReadUs() {
+        return mLastTimestampUs - mFirstTimestampUs;
     }
 }

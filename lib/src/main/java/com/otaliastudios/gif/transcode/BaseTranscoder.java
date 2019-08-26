@@ -204,7 +204,7 @@ public abstract class BaseTranscoder implements Transcoder {
         if (result < 0) return DRAIN_STATE_NONE;
 
         mDataChunk.buffer = mDecoderBuffers.getInputBuffer(result);
-        mDataSource.readTrack(mDataChunk);
+        mDataSource.read(mDataChunk);
         mDecoder.queueInputBuffer(result,
                 0,
                 mDataChunk.bytes,

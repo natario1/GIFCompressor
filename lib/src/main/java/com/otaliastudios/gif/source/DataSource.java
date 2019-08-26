@@ -1,9 +1,9 @@
 package com.otaliastudios.gif.source;
 
+import android.graphics.Bitmap;
 import android.media.MediaFormat;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 
 import java.nio.ByteBuffer;
 
@@ -39,7 +39,7 @@ public interface DataSource {
      *
      * @param chunk output chunk
      */
-    void readTrack(@NonNull DataSource.Chunk chunk);
+    void read(@NonNull DataSource.Chunk chunk);
 
     /**
      * Returns the total number of microseconds that have been read until now.
@@ -63,12 +63,10 @@ public interface DataSource {
 
     /**
      * Represents a chunk of data.
-     * Can be used to read input from {@link #readTrack(Chunk)}.
+     * Can be used to read input from {@link #read(Chunk)}.
      */
     class Chunk {
-        public ByteBuffer buffer;
-        public boolean isKeyFrame;
+        public Bitmap bitmap;
         public long timestampUs;
-        public int bytes;
     }
 }

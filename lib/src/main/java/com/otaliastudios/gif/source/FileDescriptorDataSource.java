@@ -1,10 +1,10 @@
 package com.otaliastudios.gif.source;
 
-import android.media.MediaExtractor;
-import android.media.MediaMetadataRetriever;
+import android.content.Context;
 
 import java.io.FileDescriptor;
-import java.io.IOException;
+import java.io.FileInputStream;
+import java.io.InputStream;
 
 import androidx.annotation.NonNull;
 
@@ -16,17 +16,14 @@ public class FileDescriptorDataSource extends DefaultDataSource {
     @NonNull
     private FileDescriptor descriptor;
 
-    public FileDescriptorDataSource(@NonNull FileDescriptor descriptor) {
+    public FileDescriptorDataSource(@NonNull Context context, @NonNull FileDescriptor descriptor) {
+        super(context);
         this.descriptor = descriptor;
     }
 
+    @NonNull
     @Override
-    public void applyExtractor(@NonNull MediaExtractor extractor) throws IOException  {
-        extractor.setDataSource(descriptor);
-    }
-
-    @Override
-    public void applyRetriever(@NonNull MediaMetadataRetriever retriever) {
-        retriever.setDataSource(descriptor);
+    protected InputStream openInputStream() {
+        return new FileInputStream(descriptor);
     }
 }
