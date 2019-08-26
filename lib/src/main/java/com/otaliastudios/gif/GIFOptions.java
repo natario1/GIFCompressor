@@ -6,8 +6,6 @@ import android.os.Handler;
 import android.os.Looper;
 
 import com.otaliastudios.gif.engine.TrackType;
-import com.otaliastudios.gif.resample.AudioResampler;
-import com.otaliastudios.gif.resample.DefaultAudioResampler;
 import com.otaliastudios.gif.sink.DataSink;
 import com.otaliastudios.gif.sink.DefaultDataSink;
 import com.otaliastudios.gif.source.DataSource;
@@ -17,8 +15,6 @@ import com.otaliastudios.gif.source.UriDataSource;
 import com.otaliastudios.gif.strategy.DefaultAudioStrategy;
 import com.otaliastudios.gif.strategy.DefaultVideoStrategies;
 import com.otaliastudios.gif.strategy.TrackStrategy;
-import com.otaliastudios.gif.stretch.AudioStretcher;
-import com.otaliastudios.gif.stretch.DefaultAudioStretcher;
 import com.otaliastudios.gif.time.DefaultTimeInterpolator;
 import com.otaliastudios.gif.time.SpeedTimeInterpolator;
 import com.otaliastudios.gif.time.TimeInterpolator;
@@ -45,8 +41,6 @@ public class GIFOptions {
     private TrackStrategy videoTrackStrategy;
     private int rotation;
     private TimeInterpolator timeInterpolator;
-    private AudioStretcher audioStretcher;
-    private AudioResampler audioResampler;
 
     GIFListener listener;
     Handler listenerHandler;
@@ -85,16 +79,6 @@ public class GIFOptions {
         return timeInterpolator;
     }
 
-    @NonNull
-    public AudioStretcher getAudioStretcher() {
-        return audioStretcher;
-    }
-
-    @NonNull
-    public AudioResampler getAudioResampler() {
-        return audioResampler;
-    }
-
     public static class Builder {
         private DataSink dataSink;
         private final List<DataSource> audioDataSources = new ArrayList<>();
@@ -105,8 +89,6 @@ public class GIFOptions {
         private TrackStrategy videoTrackStrategy;
         private int rotation;
         private TimeInterpolator timeInterpolator;
-        private AudioStretcher audioStretcher;
-        private AudioResampler audioResampler;
 
         Builder(@NonNull String outPath) {
             this.dataSink = new DefaultDataSink(outPath);
@@ -263,36 +245,6 @@ public class GIFOptions {
             return setTimeInterpolator(new SpeedTimeInterpolator(speedFactor));
         }
 
-        /**
-         * Sets an {@link AudioStretcher} to perform stretching of audio samples
-         * as a consequence of speed and time interpolator changes.
-         * Defaults to {@link DefaultAudioStretcher}.
-         *
-         * @param audioStretcher an audio stretcher
-         * @return this for chaining
-         */
-        @NonNull
-        @SuppressWarnings("unused")
-        public Builder setAudioStretcher(@NonNull AudioStretcher audioStretcher) {
-            this.audioStretcher = audioStretcher;
-            return this;
-        }
-
-        /**
-         * Sets an {@link AudioResampler} to change the sample rate of audio
-         * frames when sample rate conversion is needed. Upsampling is discouraged.
-         * Defaults to {@link DefaultAudioResampler}.
-         *
-         * @param audioResampler an audio resampler
-         * @return this for chaining
-         */
-        @NonNull
-        @SuppressWarnings("unused")
-        public Builder setAudioResampler(@NonNull AudioResampler audioResampler) {
-            this.audioResampler = audioResampler;
-            return this;
-        }
-
         @NonNull
         public GIFOptions build() {
             if (listener == null) {
@@ -318,12 +270,6 @@ public class GIFOptions {
             if (timeInterpolator == null) {
                 timeInterpolator = new DefaultTimeInterpolator();
             }
-            if (audioStretcher == null) {
-                audioStretcher = new DefaultAudioStretcher();
-            }
-            if (audioResampler == null) {
-                audioResampler = new DefaultAudioResampler();
-            }
             GIFOptions options = new GIFOptions();
             options.listener = listener;
             options.audioDataSources = audioDataSources;
@@ -334,8 +280,6 @@ public class GIFOptions {
             options.videoTrackStrategy = videoTrackStrategy;
             options.rotation = rotation;
             options.timeInterpolator = timeInterpolator;
-            options.audioStretcher = audioStretcher;
-            options.audioResampler = audioResampler;
             return options;
         }
 

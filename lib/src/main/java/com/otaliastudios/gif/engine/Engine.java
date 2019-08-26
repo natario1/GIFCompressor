@@ -24,7 +24,6 @@ import com.otaliastudios.gif.sink.InvalidOutputFormatException;
 import com.otaliastudios.gif.source.DataSource;
 import com.otaliastudios.gif.strategy.TrackStrategy;
 import com.otaliastudios.gif.time.TimeInterpolator;
-import com.otaliastudios.gif.transcode.AudioTrackTranscoder;
 import com.otaliastudios.gif.transcode.NoOpTrackTranscoder;
 import com.otaliastudios.gif.transcode.PassThroughTrackTranscoder;
 import com.otaliastudios.gif.transcode.TrackTranscoder;
@@ -168,11 +167,7 @@ public class Engine {
                                 options.getVideoRotation());
                         break;
                     case AUDIO:
-                        transcoder = new AudioTrackTranscoder(dataSource, mDataSink,
-                                interpolator,
-                                options.getAudioStretcher(),
-                                options.getAudioResampler());
-                        break;
+                        throw new UnsupportedOperationException("Unsupported type");
                     default:
                         throw new RuntimeException("Unknown type: " + type);
                 }
