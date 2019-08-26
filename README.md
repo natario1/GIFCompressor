@@ -17,7 +17,7 @@
 Compresses GIF files into the MP4 format, using hardware accelerated Android codecs available on the device. Works on API 18+.
 
 ```groovy
-implementation 'com.otaliastudios.gif:compressor:0.1.0'
+implementation 'com.otaliastudios.gif:compressor:1.0.0'
 ```
 
 - Fast compression to lightweight MP4 (AVC)
