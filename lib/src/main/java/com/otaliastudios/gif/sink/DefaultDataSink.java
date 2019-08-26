@@ -7,7 +7,6 @@ import android.media.MediaMuxer;
 import androidx.annotation.NonNull;
 
 import com.otaliastudios.gif.engine.TrackStatus;
-import com.otaliastudios.gif.internal.TrackTypeMap;
 import com.otaliastudios.gif.internal.Logger;
 
 import java.io.IOException;
@@ -51,9 +50,9 @@ public class DefaultDataSink implements DataSink {
     private final MediaMuxer mMuxer;
     private final List<QueuedSample> mQueue = new ArrayList<>();
     private ByteBuffer mQueueBuffer;
-    private TrackTypeMap<TrackStatus> mStatus = new TrackTypeMap<>();
-    private TrackTypeMap<MediaFormat> mLastFormat = new TrackTypeMap<>();
-    private TrackTypeMap<Integer> mMuxerIndex = new TrackTypeMap<>();
+    private TrackStatus mStatus;
+    private MediaFormat mLastFormat;
+    private int mMuxerIndex;
     private final DefaultDataSinkChecks mMuxerChecks = new DefaultDataSinkChecks();
 
     public DefaultDataSink(@NonNull String outputFilePath) {
@@ -76,23 +75,23 @@ public class DefaultDataSink implements DataSink {
 
     @Override
     public void setTrackStatus(@NonNull TrackStatus status) {
-        mStatus.setVideo(status);
+        mStatus = status;
     }
 
     @Override
     public void setTrackFormat(@NonNull MediaFormat format) {
-        boolean shouldValidate = mStatus.requireVideo() == TrackStatus.COMPRESSING;
+        boolean shouldValidate = mStatus == TrackStatus.COMPRESSING;
         if (shouldValidate) {
             mMuxerChecks.checkOutputFormat(format);
         }
-        mLastFormat.setVideo(format);
+        mLastFormat = format;
         startIfNeeded();
     }
 
     private void startIfNeeded() {
         if (mMuxerStarted) return;
-        boolean isTranscodingVideo = mStatus.requireVideo().isTranscoding();
-        MediaFormat videoOutputFormat = mLastFormat.getVideo();
+        boolean isTranscodingVideo = mStatus.isTranscoding();
+        MediaFormat videoOutputFormat = mLastFormat;
         boolean isVideoReady = videoOutputFormat != null || !isTranscodingVideo;
         if (!isVideoReady) return;
 
@@ -100,7 +99,7 @@ public class DefaultDataSink implements DataSink {
         // We will stop buffering data and we will start actually muxing it.
         if (isTranscodingVideo) {
             int videoIndex = mMuxer.addTrack(videoOutputFormat);
-            mMuxerIndex.setVideo(videoIndex);
+            mMuxerIndex = videoIndex;
             LOG.v("Added track #" + videoIndex + " with " + videoOutputFormat.getString(MediaFormat.KEY_MIME) + " to muxer");
         }
         mMuxer.start();
@@ -111,7 +110,7 @@ public class DefaultDataSink implements DataSink {
     @Override
     public void writeTrack(@NonNull ByteBuffer byteBuffer, @NonNull MediaCodec.BufferInfo bufferInfo) {
         if (mMuxerStarted) {
-            mMuxer.writeSampleData(mMuxerIndex.requireVideo(), byteBuffer, bufferInfo);
+            mMuxer.writeSampleData(mMuxerIndex, byteBuffer, bufferInfo);
         } else {
             enqueue(byteBuffer, bufferInfo);
         }

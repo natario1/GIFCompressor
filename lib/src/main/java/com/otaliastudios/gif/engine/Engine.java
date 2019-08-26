@@ -18,7 +18,6 @@ package com.otaliastudios.gif.engine;
 import android.media.MediaFormat;
 
 import com.otaliastudios.gif.GIFOptions;
-import com.otaliastudios.gif.internal.TrackTypeMap;
 import com.otaliastudios.gif.sink.DataSink;
 import com.otaliastudios.gif.sink.InvalidOutputFormatException;
 import com.otaliastudios.gif.source.DataSource;
@@ -34,9 +33,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 /**
  * Internal engine, do not use this directly.
@@ -60,12 +57,12 @@ public class Engine {
     }
 
     private DataSink mDataSink;
-    private final TrackTypeMap<List<DataSource>> mDataSources = new TrackTypeMap<>();
-    private final TrackTypeMap<ArrayList<TrackTranscoder>> mTranscoders = new TrackTypeMap<>(new ArrayList<TrackTranscoder>());
-    private final TrackTypeMap<ArrayList<TimeInterpolator>> mInterpolators = new TrackTypeMap<>(new ArrayList<TimeInterpolator>());
-    private final TrackTypeMap<Integer> mCurrentStep = new TrackTypeMap<>(0);
-    private final TrackTypeMap<TrackStatus> mStatuses = new TrackTypeMap<>();
-    private final TrackTypeMap<MediaFormat> mOutputFormats = new TrackTypeMap<>();
+    private List<DataSource> mDataSources = null;
+    private final List<TrackTranscoder> mTranscoders = new ArrayList<>();
+    private final List<TimeInterpolator> mInterpolators = new ArrayList<>();
+    private int mCurrentStep = 0;
+    private TrackStatus mStatus = null;
+    private MediaFormat mOutputFormat = null;
     private volatile double mProgress;
     private final ProgressCallback mProgressCallback;
 
@@ -90,16 +87,6 @@ public class Engine {
         }
     }
 
-    private boolean hasVideoSources() {
-        return !mDataSources.requireVideo().isEmpty();
-    }
-
-    private Set<DataSource> getUniqueSources() {
-        Set<DataSource> sources = new HashSet<>();
-        sources.addAll(mDataSources.requireVideo());
-        return sources;
-    }
-
     private void computeTrackStatus(@NonNull TrackStrategy strategy,
                                     @NonNull List<DataSource> sources) {
         TrackStatus status = TrackStatus.ABSENT;
@@ -112,25 +99,25 @@ public class Engine {
             }
             status = strategy.createOutputFormat(inputFormats, outputFormat);
         }
-        mOutputFormats.setVideo(outputFormat);
+        mOutputFormat = outputFormat;
         mDataSink.setTrackStatus(status);
-        mStatuses.setVideo(status);
+        mStatus = status;
     }
 
     private boolean isCompleted() {
-        if (mDataSources.requireVideo().isEmpty()) return true;
-        int current = mCurrentStep.requireVideo();
-        return current == mDataSources.requireVideo().size() - 1
-                && current == mTranscoders.requireVideo().size() - 1
-                && mTranscoders.requireVideo().get(current).isFinished();
+        if (mDataSources.isEmpty()) return true;
+        int current = mCurrentStep;
+        return current == mDataSources.size() - 1
+                && current == mTranscoders.size() - 1
+                && mTranscoders.get(current).isFinished();
     }
 
     private void openCurrentStep(@NonNull GIFOptions options) {
-        int current = mCurrentStep.requireVideo();
-        TrackStatus status = mStatuses.requireVideo();
+        int current = mCurrentStep;
+        TrackStatus status = mStatus;
 
         // Notify the data source that we'll be transcoding this track.
-        DataSource dataSource = mDataSources.requireVideo().get(current);
+        DataSource dataSource = mDataSources.get(current);
         if (status.isTranscoding()) {
             dataSource.start();
         }
@@ -138,7 +125,7 @@ public class Engine {
         // Create a TimeInterpolator, wrapping the external one.
         TimeInterpolator interpolator = createStepTimeInterpolator(current,
                 options.getTimeInterpolator());
-        mInterpolators.requireVideo().add(interpolator);
+        mInterpolators.add(interpolator);
 
         // Create a Transcoder for this track.
         TrackTranscoder transcoder;
@@ -161,37 +148,37 @@ public class Engine {
                 break;
             }
         }
-        transcoder.setUp(mOutputFormats.requireVideo());
-        mTranscoders.requireVideo().add(transcoder);
+        transcoder.setUp(mOutputFormat);
+        mTranscoders.add(transcoder);
     }
 
     private void closeCurrentStep() {
-        int current = mCurrentStep.requireVideo();
-        TrackTranscoder transcoder = mTranscoders.requireVideo().get(current);
-        DataSource dataSource = mDataSources.requireVideo().get(current);
+        int current = mCurrentStep;
+        TrackTranscoder transcoder = mTranscoders.get(current);
+        DataSource dataSource = mDataSources.get(current);
         transcoder.release();
         dataSource.release();
-        mCurrentStep.setVideo(current + 1);
+        mCurrentStep = current + 1;
     }
 
     @NonNull
     private TrackTranscoder getCurrentTrackTranscoder(@NonNull GIFOptions options) {
-        int current = mCurrentStep.requireVideo();
-        int last = mTranscoders.requireVideo().size() - 1;
+        int current = mCurrentStep;
+        int last = mTranscoders.size() - 1;
         if (last == current) {
             // We have already created a transcoder for this step.
             // But this step might be completed and we might need to create a new one.
-            TrackTranscoder transcoder = mTranscoders.requireVideo().get(last);
+            TrackTranscoder transcoder = mTranscoders.get(last);
             if (transcoder.isFinished()) {
                 closeCurrentStep();
                 return getCurrentTrackTranscoder(options);
             } else {
-                return mTranscoders.requireVideo().get(current);
+                return mTranscoders.get(current);
             }
         } else if (last < current) {
             // We need to create a new step.
             openCurrentStep(options);
-            return mTranscoders.requireVideo().get(current);
+            return mTranscoders.get(current);
         } else {
             throw new IllegalStateException("This should never happen. last:" + last + ", current:" + current);
         }
@@ -202,7 +189,7 @@ public class Engine {
                                                         final @NonNull TimeInterpolator wrap) {
         final long timebase;
         if (step > 0) {
-            TimeInterpolator previous = mInterpolators.requireVideo().get(step - 1);
+            TimeInterpolator previous = mInterpolators.get(step - 1);
             timebase = previous.interpolate(Long.MAX_VALUE);
         } else {
             timebase = 0;
@@ -224,11 +211,11 @@ public class Engine {
     }
 
     private long getTotalDurationUs() {
-        if (!mStatuses.requireVideo().isTranscoding()) return 0L;
-        int current = mCurrentStep.requireVideo();
+        if (!mStatus.isTranscoding()) return 0L;
+        int current = mCurrentStep;
         long totalDurationUs = 0;
-        for (int i = 0; i < mDataSources.requireVideo().size(); i++) {
-            DataSource source = mDataSources.requireVideo().get(i);
+        for (int i = 0; i < mDataSources.size(); i++) {
+            DataSource source = mDataSources.get(i);
             if (i < current) { // getReadUs() is a better approximation for sure.
                 totalDurationUs += source.getReadUs();
             } else {
@@ -239,11 +226,11 @@ public class Engine {
     }
 
     private long getTrackReadUs() {
-        if (!mStatuses.requireVideo().isTranscoding()) return 0L;
-        int current = mCurrentStep.requireVideo();
+        if (!mStatus.isTranscoding()) return 0L;
+        int current = mCurrentStep;
         long completedDurationUs = 0;
-        for (int i = 0; i < mDataSources.requireVideo().size(); i++) {
-            DataSource source = mDataSources.requireVideo().get(i);
+        for (int i = 0; i < mDataSources.size(); i++) {
+            DataSource source = mDataSources.get(i);
             if (i <= current) {
                 completedDurationUs += source.getReadUs();
             }
@@ -252,7 +239,7 @@ public class Engine {
     }
 
     private double getTrackProgress() {
-        if (!mStatuses.requireVideo().isTranscoding()) return 0.0D;
+        if (!mStatus.isTranscoding()) return 0.0D;
         long readUs = getTrackReadUs();
         long totalUs = getTotalDurationUs();
         LOG.v("getTrackProgress - readUs:" + readUs + ", totalUs:" + totalUs);
@@ -269,13 +256,13 @@ public class Engine {
      */
     public void transcode(@NonNull GIFOptions options) throws InterruptedException {
         mDataSink = options.getDataSink();
-        mDataSources.setVideo(options.getVideoDataSources());
+        mDataSources = options.getVideoDataSources();
         mDataSink.setOrientation(0); // Explicitly set 0 to output - we rotate the textures instead.
 
         // Compute the TrackStatus.
         int activeTracks = 0;
         computeTrackStatus(options.getVideoTrackStrategy(), options.getVideoDataSources());
-        TrackStatus videoStatus = mStatuses.requireVideo();
+        TrackStatus videoStatus = mStatus;
         if (videoStatus.isTranscoding()) activeTracks++;
         LOG.v("Duration (us): " + getTotalDurationUs());
 

@@ -6,7 +6,6 @@ import android.media.MediaMetadataRetriever;
 
 import androidx.annotation.NonNull;
 
-import com.otaliastudios.gif.internal.TrackTypeMap;
 import com.otaliastudios.gif.internal.Logger;
 
 import java.io.IOException;
@@ -23,8 +22,8 @@ public abstract class DefaultDataSource implements DataSource {
     private final MediaExtractor mExtractor = new MediaExtractor();
     private boolean mMetadataApplied;
     private boolean mExtractorApplied;
-    private final TrackTypeMap<MediaFormat> mFormats = new TrackTypeMap<>();
-    private final TrackTypeMap<Integer> mIndex = new TrackTypeMap<>();
+    private MediaFormat mFormat;
+    private int mIndex;
     private long mLastTimestampUs;
     private long mFirstTimestampUs = Long.MIN_VALUE;
 
@@ -53,7 +52,7 @@ public abstract class DefaultDataSource implements DataSource {
 
     @Override
     public void start() {
-        mExtractor.selectTrack(mIndex.requireVideo());
+        mExtractor.selectTrack(mIndex);
     }
 
     @Override
@@ -108,7 +107,7 @@ public abstract class DefaultDataSource implements DataSource {
     @NonNull
     @Override
     public MediaFormat getTrackFormat() {
-        if (mFormats.has()) return mFormats.getVideo();
+        if (mFormat != null) return mFormat;
         ensureExtractor();
         int trackCount = mExtractor.getTrackCount();
         MediaFormat format = null;
@@ -116,11 +115,11 @@ public abstract class DefaultDataSource implements DataSource {
             format = mExtractor.getTrackFormat(i);
             String mime = format.getString(MediaFormat.KEY_MIME);
             if (mime.startsWith("video/")) {
-                mIndex.setVideo(i);
+                mIndex = i;
                 break;
             }
         }
-        mFormats.setVideo(format);
+        mFormat = format;
         return format;
     }
 

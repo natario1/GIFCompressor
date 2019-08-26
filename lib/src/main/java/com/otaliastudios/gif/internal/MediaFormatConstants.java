@@ -50,9 +50,5 @@ public class MediaFormatConstants {
     public static final String MIMETYPE_VIDEO_H263 = "video/3gpp";
     public static final String MIMETYPE_VIDEO_VP8 = "video/x-vnd.on2.vp8";
 
-    // Audio formats
-    // from MediaFormat of API level >= 21
-    public static final String MIMETYPE_AUDIO_AAC = "audio/mp4a-latm";
-
     private MediaFormatConstants() { }
 }

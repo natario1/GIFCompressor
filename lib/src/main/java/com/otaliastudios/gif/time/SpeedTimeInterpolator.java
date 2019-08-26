@@ -1,6 +1,5 @@
 package com.otaliastudios.gif.time;
 
-import com.otaliastudios.gif.internal.TrackTypeMap;
 import com.otaliastudios.gif.internal.Logger;
 
 
@@ -15,7 +14,7 @@ public class SpeedTimeInterpolator implements TimeInterpolator {
     private final static Logger LOG = new Logger(TAG);
 
     private double mFactor;
-    private final TrackTypeMap<TrackData> mTrackData = new TrackTypeMap<>();
+    private final TrackData mTrackData = new TrackData();
 
     /**
      * Creates a new speed interpolator for the given factor.
@@ -40,11 +39,7 @@ public class SpeedTimeInterpolator implements TimeInterpolator {
 
     @Override
     public long interpolate(long time) {
-        if (!mTrackData.has()) {
-            mTrackData.setVideo(new TrackData());
-        }
-        TrackData data = mTrackData.getVideo();
-        //noinspection ConstantConditions
+        TrackData data = mTrackData;
         if (data.lastRealTime == Long.MIN_VALUE) {
             data.lastRealTime = time;
             data.lastCorrectedTime = time;
