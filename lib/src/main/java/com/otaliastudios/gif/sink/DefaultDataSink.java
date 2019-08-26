@@ -95,7 +95,7 @@ public class DefaultDataSink implements DataSink {
     public void setTrackFormat(@NonNull TrackType type, @NonNull MediaFormat format) {
         boolean shouldValidate = mStatus.require(type) == TrackStatus.COMPRESSING;
         if (shouldValidate) {
-            mMuxerChecks.checkOutputFormat(type, format);
+            mMuxerChecks.checkOutputFormat(format);
         }
         mLastFormat.set(type, format);
         startIfNeeded();
@@ -104,12 +104,9 @@ public class DefaultDataSink implements DataSink {
     private void startIfNeeded() {
         if (mMuxerStarted) return;
         boolean isTranscodingVideo = mStatus.require(TrackType.VIDEO).isTranscoding();
-        boolean isTranscodingAudio = mStatus.require(TrackType.AUDIO).isTranscoding();
         MediaFormat videoOutputFormat = mLastFormat.get(TrackType.VIDEO);
-        MediaFormat audioOutputFormat = mLastFormat.get(TrackType.AUDIO);
         boolean isVideoReady = videoOutputFormat != null || !isTranscodingVideo;
-        boolean isAudioReady = audioOutputFormat != null || !isTranscodingAudio;
-        if (!isVideoReady || !isAudioReady) return;
+        if (!isVideoReady) return;
 
         // If both video and audio are ready, we can go on.
         // We will stop buffering data and we will start actually muxing it.
@@ -117,11 +114,6 @@ public class DefaultDataSink implements DataSink {
             int videoIndex = mMuxer.addTrack(videoOutputFormat);
             mMuxerIndex.set(TrackType.VIDEO, videoIndex);
             LOG.v("Added track #" + videoIndex + " with " + videoOutputFormat.getString(MediaFormat.KEY_MIME) + " to muxer");
-        }
-        if (isTranscodingAudio) {
-            int audioIndex = mMuxer.addTrack(audioOutputFormat);
-            mMuxerIndex.set(TrackType.AUDIO, audioIndex);
-            LOG.v("Added track #" + audioIndex + " with " + audioOutputFormat.getString(MediaFormat.KEY_MIME) + " to muxer");
         }
         mMuxer.start();
         mMuxerStarted = true;

@@ -61,9 +61,9 @@ public class Engine {
 
     private DataSink mDataSink;
     private final TrackTypeMap<List<DataSource>> mDataSources = new TrackTypeMap<>();
-    private final TrackTypeMap<ArrayList<TrackTranscoder>> mTranscoders = new TrackTypeMap<>(new ArrayList<TrackTranscoder>(), new ArrayList<TrackTranscoder>());
-    private final TrackTypeMap<ArrayList<TimeInterpolator>> mInterpolators = new TrackTypeMap<>(new ArrayList<TimeInterpolator>(), new ArrayList<TimeInterpolator>());
-    private final TrackTypeMap<Integer> mCurrentStep = new TrackTypeMap<>(0, 0);
+    private final TrackTypeMap<ArrayList<TrackTranscoder>> mTranscoders = new TrackTypeMap<>(new ArrayList<TrackTranscoder>());
+    private final TrackTypeMap<ArrayList<TimeInterpolator>> mInterpolators = new TrackTypeMap<>(new ArrayList<TimeInterpolator>());
+    private final TrackTypeMap<Integer> mCurrentStep = new TrackTypeMap<>(0);
     private final TrackTypeMap<TrackStatus> mStatuses = new TrackTypeMap<>();
     private final TrackTypeMap<MediaFormat> mOutputFormats = new TrackTypeMap<>();
     private volatile double mProgress;
@@ -94,14 +94,9 @@ public class Engine {
         return !mDataSources.requireVideo().isEmpty();
     }
 
-    private boolean hasAudioSources() {
-        return !mDataSources.requireAudio().isEmpty();
-    }
-
     private Set<DataSource> getUniqueSources() {
         Set<DataSource> sources = new HashSet<>();
         sources.addAll(mDataSources.requireVideo());
-        sources.addAll(mDataSources.requireAudio());
         return sources;
     }
 
@@ -166,8 +161,6 @@ public class Engine {
                                 interpolator,
                                 options.getVideoRotation());
                         break;
-                    case AUDIO:
-                        throw new UnsupportedOperationException("Unsupported type");
                     default:
                         throw new RuntimeException("Unknown type: " + type);
                 }
@@ -259,10 +252,7 @@ public class Engine {
 
     private long getTotalDurationUs() {
         boolean hasVideo = hasVideoSources() && mStatuses.requireVideo().isTranscoding();
-        boolean hasAudio = hasAudioSources() && mStatuses.requireAudio().isTranscoding();
-        long video = hasVideo ? getTrackDurationUs(TrackType.VIDEO) : Long.MAX_VALUE;
-        long audio = hasAudio ? getTrackDurationUs(TrackType.AUDIO) : Long.MAX_VALUE;
-        return Math.min(video, audio);
+        return hasVideo ? getTrackDurationUs(TrackType.VIDEO) : Long.MAX_VALUE;
     }
 
     private long getTrackReadUs(@NonNull TrackType type) {
@@ -297,7 +287,6 @@ public class Engine {
     public void transcode(@NonNull GIFOptions options) throws InterruptedException {
         mDataSink = options.getDataSink();
         mDataSources.setVideo(options.getVideoDataSources());
-        mDataSources.setAudio(options.getAudioDataSources());
 
         // Pass metadata from DataSource to DataSink
         mDataSink.setOrientation(0); // Explicitly set 0 to output - we rotate the textures.
@@ -313,22 +302,19 @@ public class Engine {
 
         // Compute the TrackStatus.
         int activeTracks = 0;
-        computeTrackStatus(TrackType.AUDIO, options.getAudioTrackStrategy(), options.getAudioDataSources());
         computeTrackStatus(TrackType.VIDEO, options.getVideoTrackStrategy(), options.getVideoDataSources());
         TrackStatus videoStatus = mStatuses.requireVideo();
-        TrackStatus audioStatus = mStatuses.requireAudio();
         if (videoStatus.isTranscoding()) activeTracks++;
-        if (audioStatus.isTranscoding()) activeTracks++;
         LOG.v("Duration (us): " + getTotalDurationUs());
 
         // Do the actual transcoding work.
         try {
             long loopCount = 0;
             boolean stepped = false;
-            boolean audioCompleted = false, videoCompleted = false;
-            boolean forceAudioEos = false, forceVideoEos = false;
-            double audioProgress = 0, videoProgress = 0;
-            while (!(audioCompleted && videoCompleted)) {
+            boolean videoCompleted = false;
+            boolean forceVideoEos = false;
+            double videoProgress = 0;
+            while (!videoCompleted) {
                 LOG.v("new step: " + loopCount);
 
                 if (Thread.interrupted()) {
@@ -340,23 +326,17 @@ public class Engine {
                 // This can happen, for example, if user adds 1 minute (video only) with 20 seconds
                 // of audio. The video track must be stopped once the audio stops.
                 long totalUs = getTotalDurationUs() + 100 /* tolerance */;
-                forceAudioEos = getTrackReadUs(TrackType.AUDIO) > totalUs;
                 forceVideoEos = getTrackReadUs(TrackType.VIDEO) > totalUs;
 
                 // Now step for transcoders that are not completed.
-                audioCompleted = isCompleted(TrackType.AUDIO);
                 videoCompleted = isCompleted(TrackType.VIDEO);
-                if (!audioCompleted) {
-                    stepped |= getCurrentTrackTranscoder(TrackType.AUDIO, options).transcode(forceAudioEos);
-                }
                 if (!videoCompleted) {
                     stepped |= getCurrentTrackTranscoder(TrackType.VIDEO, options).transcode(forceVideoEos);
                 }
                 if (++loopCount % PROGRESS_INTERVAL_STEPS == 0) {
-                    audioProgress = getTrackProgress(TrackType.AUDIO);
                     videoProgress = getTrackProgress(TrackType.VIDEO);
-                    LOG.v("progress - video:" + videoProgress + " audio:" + audioProgress);
-                    setProgress((videoProgress + audioProgress) / activeTracks);
+                    LOG.v("progress - video:" + videoProgress);
+                    setProgress((videoProgress) / activeTracks);
                 }
                 if (!stepped) {
                     Thread.sleep(SLEEP_TO_WAIT_TRACK_TRANSCODERS);
@@ -366,7 +346,6 @@ public class Engine {
         } finally {
             try {
                 closeCurrentStep(TrackType.VIDEO);
-                closeCurrentStep(TrackType.AUDIO);
             } catch (Exception ignore) {}
             mDataSink.release();
         }

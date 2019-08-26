@@ -148,10 +148,6 @@ public abstract class DefaultDataSource implements DataSource {
                 mIndex.set(TrackType.VIDEO, i);
                 break;
             }
-            if (type == TrackType.AUDIO && mime.startsWith("audio/")) {
-                mIndex.set(TrackType.AUDIO, i);
-                break;
-            }
         }
         mFormats.set(type, format);
         return format;

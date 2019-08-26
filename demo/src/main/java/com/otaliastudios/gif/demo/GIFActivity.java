@@ -47,30 +47,23 @@ public class GIFActivity extends AppCompatActivity implements
     private static final int REQUEST_CODE_PICK_AUDIO = 5;
     private static final int PROGRESS_BAR_MAX = 1000;
 
-    private RadioGroup mAudioChannelsGroup;
-    private RadioGroup mAudioSampleRateGroup;
     private RadioGroup mVideoFramesGroup;
     private RadioGroup mVideoResolutionGroup;
     private RadioGroup mVideoAspectGroup;
     private RadioGroup mVideoRotationGroup;
     private RadioGroup mSpeedGroup;
-    private RadioGroup mAudioReplaceGroup;
 
     private ProgressBar mProgressView;
     private TextView mButtonView;
-    private TextView mAudioReplaceView;
 
     private boolean mIsTranscoding;
-    private boolean mIsAudioOnly;
     private Future<Void> mTranscodeFuture;
     private Uri mTranscodeInputUri1;
     private Uri mTranscodeInputUri2;
     private Uri mTranscodeInputUri3;
-    private Uri mAudioReplacementUri;
     private File mTranscodeOutputFile;
     private long mTranscodeStartTime;
     private TrackStrategy mTranscodeVideoStrategy;
-    private TrackStrategy mTranscodeAudioStrategy;
 
     @SuppressLint("SetTextI18n")
     @Override
@@ -94,35 +87,16 @@ public class GIFActivity extends AppCompatActivity implements
         mProgressView = findViewById(R.id.progress);
         mProgressView.setMax(PROGRESS_BAR_MAX);
 
-        mAudioReplaceView = findViewById(R.id.replace_info);
-
-        mAudioChannelsGroup = findViewById(R.id.channels);
         mVideoFramesGroup = findViewById(R.id.frames);
         mVideoResolutionGroup = findViewById(R.id.resolution);
         mVideoAspectGroup = findViewById(R.id.aspect);
         mVideoRotationGroup = findViewById(R.id.rotation);
         mSpeedGroup = findViewById(R.id.speed);
-        mAudioSampleRateGroup = findViewById(R.id.sampleRate);
-        mAudioReplaceGroup = findViewById(R.id.replace);
 
-        mAudioChannelsGroup.setOnCheckedChangeListener(this);
         mVideoFramesGroup.setOnCheckedChangeListener(this);
         mVideoResolutionGroup.setOnCheckedChangeListener(this);
         mVideoAspectGroup.setOnCheckedChangeListener(this);
-        mAudioSampleRateGroup.setOnCheckedChangeListener(this);
         syncParameters();
-
-        mAudioReplaceGroup.setOnCheckedChangeListener((group, checkedId) -> {
-            mAudioReplacementUri = null;
-            mAudioReplaceView.setText("No replacement selected.");
-            if (checkedId == R.id.replace_yes) {
-                if (!mIsTranscoding) {
-                    startActivityForResult(new Intent(Intent.ACTION_GET_CONTENT)
-                            .setType("audio/*"), REQUEST_CODE_PICK_AUDIO);
-                }
-            }
-            onCheckedChanged(group, checkedId);
-        });
     }
 
     @Override
@@ -131,33 +105,6 @@ public class GIFActivity extends AppCompatActivity implements
     }
 
     private void syncParameters() {
-        int channels;
-        switch (mAudioChannelsGroup.getCheckedRadioButtonId()) {
-            case R.id.channels_mono: channels = 1; break;
-            case R.id.channels_stereo: channels = 2; break;
-            default: channels = DefaultAudioStrategy.CHANNELS_AS_INPUT;
-        }
-        int sampleRate;
-        switch (mAudioSampleRateGroup.getCheckedRadioButtonId()) {
-            case R.id.sampleRate_32: sampleRate = 32000; break;
-            case R.id.sampleRate_48: sampleRate = 48000; break;
-            default: sampleRate = DefaultAudioStrategy.SAMPLE_RATE_AS_INPUT;
-        }
-        boolean removeAudio;
-        switch (mAudioReplaceGroup.getCheckedRadioButtonId()) {
-            case R.id.replace_remove: removeAudio = true; break;
-            case R.id.replace_yes: removeAudio = false; break;
-            default: removeAudio = false;
-        }
-        if (removeAudio) {
-            mTranscodeAudioStrategy = new RemoveTrackStrategy();
-        } else {
-            mTranscodeAudioStrategy = DefaultAudioStrategy.builder()
-                    .channels(channels)
-                    .sampleRate(sampleRate)
-                    .build();
-        }
-
         int frames;
         switch (mVideoFramesGroup.getCheckedRadioButtonId()) {
             case R.id.frames_24: frames = 24; break;
@@ -209,14 +156,6 @@ public class GIFActivity extends AppCompatActivity implements
                 transcode();
             }
         }
-        if (requestCode == REQUEST_CODE_PICK_AUDIO
-                && resultCode == RESULT_OK
-                && data != null
-                && data.getData() != null) {
-            mAudioReplacementUri = data.getData();
-            mAudioReplaceView.setText(mAudioReplacementUri.toString());
-
-        }
     }
 
     private void transcode() {
@@ -253,18 +192,10 @@ public class GIFActivity extends AppCompatActivity implements
         setIsTranscoding(true);
         DataSink sink = new DefaultDataSink(mTranscodeOutputFile.getAbsolutePath());
         GIFOptions.Builder builder = GIFCompressor.into(sink);
-        if (mAudioReplacementUri == null) {
-            if (mTranscodeInputUri1 != null) builder.addDataSource(this, mTranscodeInputUri1);
-            if (mTranscodeInputUri2 != null) builder.addDataSource(this, mTranscodeInputUri2);
-            if (mTranscodeInputUri3 != null) builder.addDataSource(this, mTranscodeInputUri3);
-        } else {
-            if (mTranscodeInputUri1 != null) builder.addDataSource(TrackType.VIDEO, this, mTranscodeInputUri1);
-            if (mTranscodeInputUri2 != null) builder.addDataSource(TrackType.VIDEO, this, mTranscodeInputUri2);
-            if (mTranscodeInputUri3 != null) builder.addDataSource(TrackType.VIDEO, this, mTranscodeInputUri3);
-            builder.addDataSource(TrackType.AUDIO, this, mAudioReplacementUri);
-        }
+        if (mTranscodeInputUri1 != null) builder.addDataSource(this, mTranscodeInputUri1);
+        if (mTranscodeInputUri2 != null) builder.addDataSource(this, mTranscodeInputUri2);
+        if (mTranscodeInputUri3 != null) builder.addDataSource(this, mTranscodeInputUri3);
         mTranscodeFuture = builder.setListener(this)
-                .setAudioTrackStrategy(mTranscodeAudioStrategy)
                 .setVideoTrackStrategy(mTranscodeVideoStrategy)
                 .setVideoRotation(rotation)
                 .setSpeed(speed)
@@ -286,7 +217,7 @@ public class GIFActivity extends AppCompatActivity implements
         LOG.w("Transcoding took " + (SystemClock.uptimeMillis() - mTranscodeStartTime) + "ms");
         onTranscodeFinished(true, "Transcoded file placed on " + mTranscodeOutputFile);
         File file = mTranscodeOutputFile;
-        String type = mIsAudioOnly ? "audio/mp4" : "video/mp4";
+        String type = "video/mp4";
         Uri uri = FileProvider.getUriForFile(GIFActivity.this,
                 FILE_PROVIDER_AUTHORITY, file);
         startActivity(new Intent(Intent.ACTION_VIEW)

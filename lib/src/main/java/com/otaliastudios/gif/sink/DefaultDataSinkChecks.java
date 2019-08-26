@@ -31,15 +31,7 @@ class DefaultDataSinkChecks {
     private static final String TAG = DefaultDataSinkChecks.class.getSimpleName();
     private static final Logger LOG = new Logger(TAG);
 
-    void checkOutputFormat(@NonNull TrackType type, @NonNull MediaFormat format) {
-        if (type == TrackType.VIDEO) {
-            checkVideoOutputFormat(format);
-        } else if (type == TrackType.AUDIO) {
-            checkAudioOutputFormat(format);
-        }
-    }
-
-    private void checkVideoOutputFormat(@NonNull MediaFormat format) {
+    void checkOutputFormat(@NonNull MediaFormat format) {
         String mime = format.getString(MediaFormat.KEY_MIME);
         // Refer: http://developer.android.com/guide/appendix/media-formats.html#core
         // Refer: http://en.wikipedia.org/wiki/MPEG-4_Part_14#Data_streams
@@ -59,13 +51,6 @@ class DefaultDataSinkChecks {
             LOG.i("Output H.264 profile: " + profileName);
         } else {
             LOG.w("Output H.264 profile: " + profileName + ". This might not be supported.");
-        }
-    }
-
-    private void checkAudioOutputFormat(@NonNull MediaFormat format) {
-        String mime = format.getString(MediaFormat.KEY_MIME);
-        if (!MediaFormatConstants.MIMETYPE_AUDIO_AAC.equals(mime)) {
-            throw new InvalidOutputFormatException("Audio codecs other than AAC is not supported, actual mime type: " + mime);
         }
     }
 }

@@ -5,14 +5,12 @@ import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
 
-import com.otaliastudios.gif.engine.TrackType;
 import com.otaliastudios.gif.sink.DataSink;
 import com.otaliastudios.gif.sink.DefaultDataSink;
 import com.otaliastudios.gif.source.DataSource;
 import com.otaliastudios.gif.source.FileDescriptorDataSource;
 import com.otaliastudios.gif.source.FilePathDataSource;
 import com.otaliastudios.gif.source.UriDataSource;
-import com.otaliastudios.gif.strategy.DefaultAudioStrategy;
 import com.otaliastudios.gif.strategy.DefaultVideoStrategies;
 import com.otaliastudios.gif.strategy.TrackStrategy;
 import com.otaliastudios.gif.time.DefaultTimeInterpolator;
@@ -36,8 +34,6 @@ public class GIFOptions {
 
     private DataSink dataSink;
     private List<DataSource> videoDataSources;
-    private List<DataSource> audioDataSources;
-    private TrackStrategy audioTrackStrategy;
     private TrackStrategy videoTrackStrategy;
     private int rotation;
     private TimeInterpolator timeInterpolator;
@@ -51,18 +47,8 @@ public class GIFOptions {
     }
 
     @NonNull
-    public List<DataSource> getAudioDataSources() {
-        return audioDataSources;
-    }
-
-    @NonNull
     public List<DataSource> getVideoDataSources() {
         return videoDataSources;
-    }
-
-    @NonNull
-    public TrackStrategy getAudioTrackStrategy() {
-        return audioTrackStrategy;
     }
 
     @NonNull
@@ -81,11 +67,9 @@ public class GIFOptions {
 
     public static class Builder {
         private DataSink dataSink;
-        private final List<DataSource> audioDataSources = new ArrayList<>();
         private final List<DataSource> videoDataSources = new ArrayList<>();
         private GIFListener listener;
         private Handler listenerHandler;
-        private TrackStrategy audioTrackStrategy;
         private TrackStrategy videoTrackStrategy;
         private int rotation;
         private TimeInterpolator timeInterpolator;
@@ -101,19 +85,7 @@ public class GIFOptions {
         @NonNull
         @SuppressWarnings("WeakerAccess")
         public Builder addDataSource(@NonNull DataSource dataSource) {
-            audioDataSources.add(dataSource);
             videoDataSources.add(dataSource);
-            return this;
-        }
-
-        @NonNull
-        @SuppressWarnings("WeakerAccess")
-        public Builder addDataSource(@NonNull TrackType type, @NonNull DataSource dataSource) {
-            if (type == TrackType.AUDIO) {
-                audioDataSources.add(dataSource);
-            } else if (type == TrackType.VIDEO) {
-                videoDataSources.add(dataSource);
-            }
             return this;
         }
 
@@ -125,46 +97,14 @@ public class GIFOptions {
 
         @NonNull
         @SuppressWarnings("unused")
-        public Builder addDataSource(@NonNull TrackType type, @NonNull FileDescriptor fileDescriptor) {
-            return addDataSource(type, new FileDescriptorDataSource(fileDescriptor));
-        }
-
-        @NonNull
-        @SuppressWarnings("unused")
         public Builder addDataSource(@NonNull String inPath) {
             return addDataSource(new FilePathDataSource(inPath));
-        }
-
-        @NonNull
-        @SuppressWarnings("unused")
-        public Builder addDataSource(@NonNull TrackType type, @NonNull String inPath) {
-            return addDataSource(type, new FilePathDataSource(inPath));
         }
 
         @NonNull
         @SuppressWarnings({"unused", "UnusedReturnValue"})
         public Builder addDataSource(@NonNull Context context, @NonNull Uri uri) {
             return addDataSource(new UriDataSource(context, uri));
-        }
-
-        @NonNull
-        @SuppressWarnings({"unused", "UnusedReturnValue"})
-        public Builder addDataSource(@NonNull TrackType type, @NonNull Context context, @NonNull Uri uri) {
-            return addDataSource(type, new UriDataSource(context, uri));
-        }
-
-        /**
-         * Sets the audio output strategy. If absent, this defaults to
-         * {@link com.otaliastudios.gif.strategy.DefaultAudioStrategy}.
-         *
-         * @param trackStrategy the desired strategy
-         * @return this for chaining
-         */
-        @NonNull
-        @SuppressWarnings("unused")
-        public Builder setAudioTrackStrategy(@Nullable TrackStrategy trackStrategy) {
-            this.audioTrackStrategy = trackStrategy;
-            return this;
         }
 
         /**
@@ -250,7 +190,7 @@ public class GIFOptions {
             if (listener == null) {
                 throw new IllegalStateException("listener can't be null");
             }
-            if (audioDataSources.isEmpty() && videoDataSources.isEmpty()) {
+            if (videoDataSources.isEmpty()) {
                 throw new IllegalStateException("we need at least one data source");
             }
             if (rotation != 0 && rotation != 90 && rotation != 180 && rotation != 270) {
@@ -261,9 +201,6 @@ public class GIFOptions {
                 if (looper == null) looper = Looper.getMainLooper();
                 listenerHandler = new Handler(looper);
             }
-            if (audioTrackStrategy == null) {
-                audioTrackStrategy = DefaultAudioStrategy.builder().build();
-            }
             if (videoTrackStrategy == null) {
                 videoTrackStrategy = DefaultVideoStrategies.for720x1280();
             }
@@ -272,11 +209,9 @@ public class GIFOptions {
             }
             GIFOptions options = new GIFOptions();
             options.listener = listener;
-            options.audioDataSources = audioDataSources;
             options.videoDataSources = videoDataSources;
             options.dataSink = dataSink;
             options.listenerHandler = listenerHandler;
-            options.audioTrackStrategy = audioTrackStrategy;
             options.videoTrackStrategy = videoTrackStrategy;
             options.rotation = rotation;
             options.timeInterpolator = timeInterpolator;
