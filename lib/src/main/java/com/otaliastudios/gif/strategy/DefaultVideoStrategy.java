@@ -4,7 +4,6 @@ import android.media.MediaCodecInfo;
 import android.media.MediaFormat;
 import android.os.Build;
 
-import com.otaliastudios.gif.engine.TrackStatus;
 import com.otaliastudios.gif.strategy.size.AspectRatioResizer;
 import com.otaliastudios.gif.strategy.size.AtMostResizer;
 import com.otaliastudios.gif.strategy.size.ExactResizer;
@@ -213,11 +212,9 @@ public class DefaultVideoStrategy implements TrackStrategy {
         this.options = options;
     }
 
-    @NonNull
     @Override
-    public TrackStatus createOutputFormat(@NonNull List<MediaFormat> inputFormats,
-                                          @NonNull MediaFormat outputFormat) {
-        boolean typeDone = checkMimeType(inputFormats);
+    public void createOutputFormat(@NonNull List<MediaFormat> inputFormats,
+                                   @NonNull MediaFormat outputFormat) {
 
         // Compute output size in rotation=0 reference.
         ExactSize inSize = getBestInputSize(inputFormats);
@@ -242,7 +239,6 @@ public class DefaultVideoStrategy implements TrackStrategy {
             outHeight = outSize.getMajor();
         }
         LOG.i("Output width&height: " + outWidth + "x" + outHeight);
-        boolean sizeDone = inSize.getMinor() <= outSize.getMinor();
 
         // Compute output frame rate. It can't be bigger than input frame rate.
         int outFrameRate;
@@ -251,23 +247,6 @@ public class DefaultVideoStrategy implements TrackStrategy {
             outFrameRate = Math.min(inputFrameRate, options.targetFrameRate);
         } else {
             outFrameRate = options.targetFrameRate;
-        }
-        boolean frameRateDone = inputFrameRate <= outFrameRate;
-
-        // Compute i frame.
-        int inputIFrameInterval = getAverageIFrameInterval(inputFormats);
-        boolean frameIntervalDone = inputIFrameInterval >= options.targetKeyFrameInterval;
-
-        // See if we should go on or if we're already compressed.
-        // If we have more than 1 input format, we can't go through this branch,
-        // or, for example, each part would be copied into output with its own size,
-        // breaking the muxer.
-        boolean canPassThrough = inputFormats.size() == 1;
-        if (canPassThrough && typeDone && sizeDone && frameRateDone && frameIntervalDone) {
-            LOG.i("Input minSize: " + inSize.getMinor() + ", desired minSize: " + outSize.getMinor() +
-                    "\nInput frameRate: " + inputFrameRate + ", desired frameRate: " + outFrameRate +
-                    "\nInput iFrameInterval: " + inputIFrameInterval + ", desired iFrameInterval: " + options.targetKeyFrameInterval);
-            return TrackStatus.PASS_THROUGH;
         }
 
         // Create the actual format.
@@ -285,16 +264,6 @@ public class DefaultVideoStrategy implements TrackStrategy {
         int outBitRate = (int) (options.targetBitRate == BITRATE_UNKNOWN ?
                 estimateBitRate(outWidth, outHeight, outFrameRate) : options.targetBitRate);
         outputFormat.setInteger(MediaFormat.KEY_BIT_RATE, outBitRate);
-        return TrackStatus.COMPRESSING;
-    }
-
-    private boolean checkMimeType(@NonNull List<MediaFormat> formats) {
-        for (MediaFormat format : formats) {
-            if (!format.getString(MediaFormat.KEY_MIME).equalsIgnoreCase(options.targetMimeType)) {
-                return false;
-            }
-        }
-        return true;
     }
 
     /**
@@ -352,18 +321,6 @@ public class DefaultVideoStrategy implements TrackStrategy {
             }
         }
         return (frameRate == Integer.MAX_VALUE) ? -1 : frameRate;
-    }
-
-    private int getAverageIFrameInterval(@NonNull List<MediaFormat> formats) {
-        int count = 0;
-        int sum = 0;
-        for (MediaFormat format : formats) {
-            if (format.containsKey(MediaFormat.KEY_I_FRAME_INTERVAL)) {
-                count++;
-                sum += format.getInteger(MediaFormat.KEY_I_FRAME_INTERVAL);
-            }
-        }
-        return (count > 0) ? Math.round((float) sum / count) : -1;
     }
 
     // Depends on the codec, but for AVC this is a reasonable default ?

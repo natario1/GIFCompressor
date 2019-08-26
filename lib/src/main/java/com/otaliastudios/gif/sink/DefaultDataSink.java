@@ -6,7 +6,6 @@ import android.media.MediaMuxer;
 
 import androidx.annotation.NonNull;
 
-import com.otaliastudios.gif.engine.TrackStatus;
 import com.otaliastudios.gif.internal.Logger;
 
 import java.io.IOException;
@@ -50,7 +49,6 @@ public class DefaultDataSink implements DataSink {
     private final MediaMuxer mMuxer;
     private final List<QueuedSample> mQueue = new ArrayList<>();
     private ByteBuffer mQueueBuffer;
-    private TrackStatus mStatus;
     private MediaFormat mLastFormat;
     private int mMuxerIndex;
     private final DefaultDataSinkChecks mMuxerChecks = new DefaultDataSinkChecks();
@@ -74,34 +72,15 @@ public class DefaultDataSink implements DataSink {
     }
 
     @Override
-    public void setTrackStatus(@NonNull TrackStatus status) {
-        mStatus = status;
-    }
-
-    @Override
     public void setTrackFormat(@NonNull MediaFormat format) {
-        boolean shouldValidate = mStatus == TrackStatus.COMPRESSING;
-        if (shouldValidate) {
-            mMuxerChecks.checkOutputFormat(format);
-        }
+        mMuxerChecks.checkOutputFormat(format);
         mLastFormat = format;
-        startIfNeeded();
-    }
-
-    private void startIfNeeded() {
         if (mMuxerStarted) return;
-        boolean isTranscodingVideo = mStatus.isTranscoding();
-        MediaFormat videoOutputFormat = mLastFormat;
-        boolean isVideoReady = videoOutputFormat != null || !isTranscodingVideo;
-        if (!isVideoReady) return;
 
-        // If both video and audio are ready, we can go on.
-        // We will stop buffering data and we will start actually muxing it.
-        if (isTranscodingVideo) {
-            int videoIndex = mMuxer.addTrack(videoOutputFormat);
-            mMuxerIndex = videoIndex;
-            LOG.v("Added track #" + videoIndex + " with " + videoOutputFormat.getString(MediaFormat.KEY_MIME) + " to muxer");
-        }
+        int videoIndex = mMuxer.addTrack(format);
+        mMuxerIndex = videoIndex;
+        LOG.v("Added track #" + videoIndex + " with " + format.getString(MediaFormat.KEY_MIME) + " to muxer");
+
         mMuxer.start();
         mMuxerStarted = true;
         drainQueue();

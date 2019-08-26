@@ -61,7 +61,6 @@ public class Engine {
     private final List<TrackTranscoder> mTranscoders = new ArrayList<>();
     private final List<TimeInterpolator> mInterpolators = new ArrayList<>();
     private int mCurrentStep = 0;
-    private TrackStatus mStatus = null;
     private MediaFormat mOutputFormat = null;
     private volatile double mProgress;
     private final ProgressCallback mProgressCallback;
@@ -89,19 +88,15 @@ public class Engine {
 
     private void computeTrackStatus(@NonNull TrackStrategy strategy,
                                     @NonNull List<DataSource> sources) {
-        TrackStatus status = TrackStatus.ABSENT;
         MediaFormat outputFormat = new MediaFormat();
-        if (!sources.isEmpty()) {
-            List<MediaFormat> inputFormats = new ArrayList<>();
-            for (DataSource source : sources) {
-                MediaFormat inputFormat = source.getTrackFormat();
-                inputFormats.add(inputFormat);
-            }
-            status = strategy.createOutputFormat(inputFormats, outputFormat);
+        List<MediaFormat> inputFormats = new ArrayList<>();
+        for (DataSource source : sources) {
+            MediaFormat inputFormat = source.getTrackFormat();
+            inputFormats.add(inputFormat);
         }
+        strategy.createOutputFormat(inputFormats, outputFormat);
+
         mOutputFormat = outputFormat;
-        mDataSink.setTrackStatus(status);
-        mStatus = status;
     }
 
     private boolean isCompleted() {
@@ -114,13 +109,10 @@ public class Engine {
 
     private void openCurrentStep(@NonNull GIFOptions options) {
         int current = mCurrentStep;
-        TrackStatus status = mStatus;
 
         // Notify the data source that we'll be transcoding this track.
         DataSource dataSource = mDataSources.get(current);
-        if (status.isTranscoding()) {
-            dataSource.start();
-        }
+        dataSource.start();
 
         // Create a TimeInterpolator, wrapping the external one.
         TimeInterpolator interpolator = createStepTimeInterpolator(current,
@@ -128,26 +120,9 @@ public class Engine {
         mInterpolators.add(interpolator);
 
         // Create a Transcoder for this track.
-        TrackTranscoder transcoder;
-        switch (status) {
-            case PASS_THROUGH: {
-                transcoder = new PassThroughTrackTranscoder(dataSource,
-                        mDataSink, interpolator);
-                break;
-            }
-            case COMPRESSING: {
-                transcoder = new VideoTrackTranscoder(dataSource, mDataSink,
-                        interpolator,
-                        options.getVideoRotation());
-                break;
-            }
-            case ABSENT:
-            case REMOVING:
-            default: {
-                transcoder = new NoOpTrackTranscoder();
-                break;
-            }
-        }
+        TrackTranscoder transcoder = new VideoTrackTranscoder(dataSource, mDataSink,
+                interpolator,
+                options.getVideoRotation());
         transcoder.setUp(mOutputFormat);
         mTranscoders.add(transcoder);
     }
@@ -211,7 +186,6 @@ public class Engine {
     }
 
     private long getTotalDurationUs() {
-        if (!mStatus.isTranscoding()) return 0L;
         int current = mCurrentStep;
         long totalDurationUs = 0;
         for (int i = 0; i < mDataSources.size(); i++) {
@@ -226,7 +200,6 @@ public class Engine {
     }
 
     private long getTrackReadUs() {
-        if (!mStatus.isTranscoding()) return 0L;
         int current = mCurrentStep;
         long completedDurationUs = 0;
         for (int i = 0; i < mDataSources.size(); i++) {
@@ -239,7 +212,6 @@ public class Engine {
     }
 
     private double getTrackProgress() {
-        if (!mStatus.isTranscoding()) return 0.0D;
         long readUs = getTrackReadUs();
         long totalUs = getTotalDurationUs();
         LOG.v("getTrackProgress - readUs:" + readUs + ", totalUs:" + totalUs);
@@ -259,11 +231,7 @@ public class Engine {
         mDataSources = options.getVideoDataSources();
         mDataSink.setOrientation(0); // Explicitly set 0 to output - we rotate the textures instead.
 
-        // Compute the TrackStatus.
-        int activeTracks = 0;
         computeTrackStatus(options.getVideoTrackStrategy(), options.getVideoDataSources());
-        TrackStatus videoStatus = mStatus;
-        if (videoStatus.isTranscoding()) activeTracks++;
         LOG.v("Duration (us): " + getTotalDurationUs());
 
         // Do the actual transcoding work.
@@ -295,7 +263,7 @@ public class Engine {
                 if (++loopCount % PROGRESS_INTERVAL_STEPS == 0) {
                     videoProgress = getTrackProgress();
                     LOG.v("progress - video:" + videoProgress);
-                    setProgress((videoProgress) / activeTracks);
+                    setProgress(videoProgress);
                 }
                 if (!stepped) {
                     Thread.sleep(SLEEP_TO_WAIT_TRACK_TRANSCODERS);

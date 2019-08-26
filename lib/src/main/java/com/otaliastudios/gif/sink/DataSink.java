@@ -5,7 +5,6 @@ import android.media.MediaFormat;
 
 import androidx.annotation.NonNull;
 
-import com.otaliastudios.gif.engine.TrackStatus;
 import com.otaliastudios.gif.transcode.TrackTranscoder;
 
 import java.nio.ByteBuffer;
@@ -25,15 +24,6 @@ public interface DataSink {
      * @param orientation 0, 90, 180 or 270
      */
     void setOrientation(int orientation);
-
-    /**
-     * Called before starting to set the status for the given
-     * track. The sink object can check if the track is transcoding
-     * using {@link TrackStatus#isTranscoding()}.
-     *
-     * @param status status
-     */
-    void setTrackStatus(@NonNull TrackStatus status);
 
     /**
      * Called by {@link TrackTranscoder}s when they have an output format.

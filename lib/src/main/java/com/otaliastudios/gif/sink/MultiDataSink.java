@@ -5,8 +5,6 @@ import android.media.MediaFormat;
 
 import androidx.annotation.NonNull;
 
-import com.otaliastudios.gif.engine.TrackStatus;
-
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.List;
@@ -23,13 +21,6 @@ public class MultiDataSink implements DataSink {
     public void setOrientation(int orientation) {
         for (DataSink sink : sinks) {
             sink.setOrientation(orientation);
-        }
-    }
-
-    @Override
-    public void setTrackStatus(@NonNull TrackStatus status) {
-        for (DataSink sink : sinks) {
-            sink.setTrackStatus(status);
         }
     }
 
