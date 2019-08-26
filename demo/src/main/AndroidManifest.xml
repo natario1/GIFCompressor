@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    package="com.otaliastudios.transcoder.demo">
+    package="com.otaliastudios.gif.demo">
 
     <uses-permission
         android:name="android.permission.WRITE_EXTERNAL_STORAGE"
@@ -24,7 +24,7 @@
 
         <provider
             android:name="androidx.core.content.FileProvider"
-            android:authorities="com.otaliastudios.transcoder.demo.fileprovider"
+            android:authorities="com.otaliastudios.gif.demo.fileprovider"
             android:exported="false"
             android:grantUriPermissions="true">
             <meta-data

@@ -2,10 +2,22 @@ apply plugin: 'com.android.library'
 apply plugin: 'com.github.dcendents.android-maven'
 apply plugin: 'com.jfrog.bintray'
 
+ext {
+    libVersion = '0.1.0'
+    libGroup = 'com.otaliastudios.gif'
+    libName = 'GIFCompressor'
+    libDescription = 'Compresses your GIFs to lightweight MP4 using hardware accelerated encoders.'
+    libArtifactId = 'compressor'
+    githubUrl = "https://github.com/natario1/${libName}"
+    githubGit = "https://github.com/natario1/${libName}.git"
+    libLicenseName = 'MIT License'
+    libLicenseUrl = 'http://www.opensource.org/licenses/mit-license.php'
+}
+
 // Required by bintray
-version = '0.7.1'
-group = 'com.otaliastudios'
-archivesBaseName = 'transcoder'
+version = libVersion
+group = libGroup
+archivesBaseName = libArtifactId
 
 android {
     compileSdkVersion rootProject.ext.compileSdkVersion
@@ -13,93 +25,82 @@ android {
     defaultConfig {
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName project.version
-        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
-
-    }
-
-    buildTypes {
-        release {
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
-        }
+        versionName libVersion
     }
 }
 
 dependencies {
-    androidTestImplementation 'androidx.test:runner:1.2.0'
-    androidTestImplementation 'androidx.test:rules:1.2.0'
-    androidTestImplementation 'androidx.test.ext:junit:1.1.1'
-    androidTestImplementation 'org.mockito:mockito-android:2.28.2'
-
-    api 'com.otaliastudios.opengl:egloo:0.2.3'
+    api "com.github.bumptech.glide:glide:4.9.0"
+    api "com.otaliastudios.opengl:egloo:0.2.3"
     api "androidx.annotation:annotation:1.1.0"
 }
 
-install {
-    repositories.mavenInstaller {
-        pom.project {
-            name 'Transcoder'
-            description 'Accelerated video transcoding using Android MediaCodec API without native code (no LGPL/patent issues)'
-            url 'https://github.com/natario1/Transcoder'
+install.repositories.mavenInstaller.pom.project {
+    name libName
+    description libDescription
+    url githubUrl
+    groupId libGroup
+    artifactId libArtifactId
+    version libVersion
+    packaging 'aar'
 
-            packaging 'aar'
-            groupId project.group
-            artifactId 'transcoder'
-            version project.version
+    scm {
+        connection githubGit
+        url githubUrl
+    }
 
-            licenses {
-                license {
-                    name 'The Apache Software License, Version 2.0'
-                    url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
-                }
-            }
-            scm {
-                connection 'https://github.com/natario1/Transcoder.git'
-                developerConnection 'https://github.com/natario1/Transcoder.git'
-                url 'https://github.com/natario1/Transcoder'
+    licenses {
+        license {
+            name libLicenseName
+            url libLicenseUrl
+        }
+    }
 
-            }
-            developers {
-                developer {
-                    id = 'natario'
-                    name 'Mattia Iavarone'
-                }
-            }
+    developers {
+        developer {
+            id = 'natario'
+            name 'Mattia Iavarione'
         }
     }
 }
 
 def bintrayUser
 def bintrayKey
-def travis = System.getenv("TRAVIS")
-if (travis) {
-    bintrayUser = System.getenv("BINTRAY_USER")
-    bintrayKey = System.getenv("BINTRAY_KEY")
+def hasBintray = false
+if (System.getenv('TRAVIS') == 'true') {
+    if (System.getenv('TRAVIS_SECURE_ENV_VARS') == 'true') {
+        bintrayUser = System.getenv("BINTRAY_USER")
+        bintrayKey = System.getenv("BINTRAY_KEY")
+        hasBintray = true
+    }
 } else {
     Properties props = new Properties()
     props.load(project.rootProject.file('local.properties').newDataInputStream())
     bintrayUser = props.getProperty('bintray.user')
     bintrayKey = props.get('bintray.key')
+    hasBintray = true
 }
 
-bintray {
-    user = bintrayUser
-    key = bintrayKey
-    configurations = ['archives']
-    pkg {
-        repo = 'android'
-        name = 'Transcoder'
-        licenses = ['Apache-2.0']
-        vcsUrl = 'https://github.com/natario1/Transcoder.git'
+if (hasBintray) {
+    bintray {
+        // https://github.com/bintray/gradle-bintray-plugin
+        user = bintrayUser
+        key = bintrayKey
+        configurations = ['archives']
         publish = true
         override = true
-        version {
-            name = project.version
-            desc = 'Transcoder v. '+project.version
-            released = new Date()
-            vcsTag = 'v'+project.version
+        pkg {
+            repo = 'android'
+            name = libName
+            licenses = [libLicenseName]
+            vcsUrl = githubGit
+            desc = libDescription
+            version {
+                name = libVersion
+                desc = libName + ' v' + libVersion
+                released = new Date()
+                vcsTag = 'v' + libVersion
+            }
         }
     }
 }

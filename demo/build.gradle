@@ -4,7 +4,7 @@ android {
     compileSdkVersion rootProject.ext.compileSdkVersion
 
     defaultConfig {
-        applicationId "com.otaliastudios.transcoder.demo"
+        applicationId "com.otaliastudios.gif.demo"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
