@@ -4,7 +4,7 @@ import androidx.annotation.NonNull;
 
 /**
  * A general purpose interface that can be used (accepted as a parameter)
- * by video strategies such as {@link com.otaliastudios.transcoder.strategy.DefaultVideoStrategy}
+ * by video strategies such as {@link com.otaliastudios.gif.strategy.DefaultStrategy}
  * to compute the output size.
  *
  * Note that a {@link Size} itself has no notion of which dimension is width and which is height.

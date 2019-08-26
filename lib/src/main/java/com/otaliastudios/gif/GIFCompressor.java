@@ -72,7 +72,7 @@ public class GIFCompressor {
     }
 
     /**
-     * Starts building transcoder options.
+     * Starts building compression options.
      * Requires a non null absolute path to the output file.
      *
      * @param outPath path to output file
@@ -84,7 +84,7 @@ public class GIFCompressor {
     }
 
     /**
-     * Starts building transcoder options.
+     * Starts building compression options.
      * Requires a non null sink.
      *
      * @param dataSink the output sink
@@ -98,7 +98,7 @@ public class GIFCompressor {
     /**
      * Compresses GIF file asynchronously.
      *
-     * @param options The transcoder options.
+     * @param options The compression options.
      * @return a Future that completes when compression is completed
      */
     @NonNull
