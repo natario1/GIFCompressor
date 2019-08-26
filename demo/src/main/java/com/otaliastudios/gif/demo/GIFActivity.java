@@ -282,21 +282,16 @@ public class GIFActivity extends AppCompatActivity implements
     }
 
     @Override
-    public void onGIFCompressionCompleted(int successCode) {
-        if (successCode == GIFCompressor.SUCCESS_COMPRESSED) {
-            LOG.w("Transcoding took " + (SystemClock.uptimeMillis() - mTranscodeStartTime) + "ms");
-            onTranscodeFinished(true, "Transcoded file placed on " + mTranscodeOutputFile);
-            File file = mTranscodeOutputFile;
-            String type = mIsAudioOnly ? "audio/mp4" : "video/mp4";
-            Uri uri = FileProvider.getUriForFile(GIFActivity.this,
-                    FILE_PROVIDER_AUTHORITY, file);
-            startActivity(new Intent(Intent.ACTION_VIEW)
-                    .setDataAndType(uri, type)
-                    .setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION));
-        } else if (successCode == GIFCompressor.SUCCESS_NOT_NEEDED) {
-            LOG.i("Transcoding was not needed.");
-            onTranscodeFinished(true, "Transcoding not needed, source file untouched.");
-        }
+    public void onGIFCompressionCompleted() {
+        LOG.w("Transcoding took " + (SystemClock.uptimeMillis() - mTranscodeStartTime) + "ms");
+        onTranscodeFinished(true, "Transcoded file placed on " + mTranscodeOutputFile);
+        File file = mTranscodeOutputFile;
+        String type = mIsAudioOnly ? "audio/mp4" : "video/mp4";
+        Uri uri = FileProvider.getUriForFile(GIFActivity.this,
+                FILE_PROVIDER_AUTHORITY, file);
+        startActivity(new Intent(Intent.ACTION_VIEW)
+                .setDataAndType(uri, type)
+                .setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION));
     }
 
     @Override

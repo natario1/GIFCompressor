@@ -35,19 +35,6 @@ public class GIFCompressor {
     private static final String TAG = GIFCompressor.class.getSimpleName();
     private static final Logger LOG = new Logger(TAG);
 
-    /**
-     * Constant for {@link GIFListener#onGIFCompressionCompleted(int)}.
-     * Transcoding was executed successfully.
-     */
-    public static final int SUCCESS_COMPRESSED = 0;
-
-    /**
-     * Constant for {@link GIFListener#onGIFCompressionCompleted(int)}:
-     * transcoding was not executed because it was considered
-     * not necessary by the validator.
-     */
-    public static final int SUCCESS_NOT_NEEDED = 1;
-
     private static volatile GIFCompressor sGIFCompressor;
 
     private class Factory implements ThreadFactory {
@@ -129,7 +116,7 @@ public class GIFCompressor {
                         }
                     });
                     engine.transcode(options);
-                    listenerWrapper.onGIFCompressionCompleted(SUCCESS_COMPRESSED);
+                    listenerWrapper.onGIFCompressionCompleted();
 
                 } catch (Throwable e) {
                     // Check InterruptedException in e and in its causes.
@@ -183,11 +170,11 @@ public class GIFCompressor {
         }
 
         @Override
-        public void onGIFCompressionCompleted(final int successCode) {
+        public void onGIFCompressionCompleted() {
             mHandler.post(new Runnable() {
                 @Override
                 public void run() {
-                    mListener.onGIFCompressionCompleted(successCode);
+                    mListener.onGIFCompressionCompleted();
                 }
             });
         }

@@ -17,12 +17,9 @@ public interface GIFListener {
     void onGIFCompressionProgress(double progress);
 
     /**
-     * Called when compress completed. The success code can be either
-     * {@link GIFCompressor#SUCCESS_COMPRESSED} or {@link GIFCompressor#SUCCESS_NOT_NEEDED}.
-     *
-     * @param successCode the success code
+     * Called when compress completed.
      */
-    void onGIFCompressionCompleted(int successCode);
+    void onGIFCompressionCompleted();
 
     /**
      * Called when compression was canceled.
