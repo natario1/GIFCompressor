@@ -14,7 +14,6 @@ import android.widget.Toast;
 import com.otaliastudios.gif.GIFCompressor;
 import com.otaliastudios.gif.GIFListener;
 import com.otaliastudios.gif.GIFOptions;
-import com.otaliastudios.gif.engine.TrackType;
 import com.otaliastudios.gif.internal.Logger;
 import com.otaliastudios.gif.sink.DataSink;
 import com.otaliastudios.gif.sink.DefaultDataSink;

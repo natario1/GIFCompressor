@@ -1,21 +1,16 @@
 package com.otaliastudios.gif.time;
 
-import androidx.annotation.NonNull;
-
-import com.otaliastudios.gif.engine.TrackType;
-
 /**
- * An interface to redefine the time between video or audio frames.
+ * An interface to redefine the time between frames.
  */
 public interface TimeInterpolator {
 
     /**
-     * Given the track type (audio or video) and the frame timestamp in microseconds,
+     * Given the frame timestamp in microseconds,
      * should return the corrected timestamp.
      *
-     * @param type track type
      * @param time frame timestamp in microseconds
      * @return the new frame timestamp
      */
-    long interpolate(@NonNull TrackType type, long time);
+    long interpolate(long time);
 }

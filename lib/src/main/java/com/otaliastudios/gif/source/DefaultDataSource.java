@@ -5,15 +5,11 @@ import android.media.MediaFormat;
 import android.media.MediaMetadataRetriever;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 
-import com.otaliastudios.gif.engine.TrackType;
 import com.otaliastudios.gif.internal.TrackTypeMap;
-import com.otaliastudios.gif.internal.ISO6709LocationParser;
 import com.otaliastudios.gif.internal.Logger;
 
 import java.io.IOException;
-import java.util.HashSet;
 
 /**
  * A DataSource implementation that uses Android's Media APIs.
@@ -29,7 +25,6 @@ public abstract class DefaultDataSource implements DataSource {
     private boolean mExtractorApplied;
     private final TrackTypeMap<MediaFormat> mFormats = new TrackTypeMap<>();
     private final TrackTypeMap<Integer> mIndex = new TrackTypeMap<>();
-    private final HashSet<TrackType> mSelectedTracks = new HashSet<>();
     private long mLastTimestampUs;
     private long mFirstTimestampUs = Long.MIN_VALUE;
 
@@ -57,21 +52,14 @@ public abstract class DefaultDataSource implements DataSource {
     protected abstract void applyRetriever(@NonNull MediaMetadataRetriever retriever);
 
     @Override
-    public void selectTrack(@NonNull TrackType type) {
-        mSelectedTracks.add(type);
-        mExtractor.selectTrack(mIndex.require(type));
+    public void start() {
+        mExtractor.selectTrack(mIndex.requireVideo());
     }
 
     @Override
     public boolean isDrained() {
         ensureExtractor();
         return mExtractor.getSampleTrackIndex() < 0;
-    }
-
-    @Override
-    public boolean canReadTrack(@NonNull TrackType type) {
-        ensureExtractor();
-        return mExtractor.getSampleTrackIndex() == mIndex.require(type);
     }
 
     @Override
@@ -93,23 +81,6 @@ public abstract class DefaultDataSource implements DataSource {
             return 0;
         }
         return mLastTimestampUs - mFirstTimestampUs;
-    }
-
-    @Nullable
-    @Override
-    public double[] getLocation() {
-        ensureMetadata();
-        String string = mMetadata.extractMetadata(MediaMetadataRetriever.METADATA_KEY_LOCATION);
-        if (string != null) {
-            float[] location = new ISO6709LocationParser().parse(string);
-            if (location != null) {
-                double[] result = new double[2];
-                result[0] = (double) location[0];
-                result[1] = (double) location[1];
-                return result;
-            }
-        }
-        return null;
     }
 
     @Override
@@ -134,34 +105,27 @@ public abstract class DefaultDataSource implements DataSource {
         }
     }
 
-    @Nullable
+    @NonNull
     @Override
-    public MediaFormat getTrackFormat(@NonNull TrackType type) {
-        if (mFormats.has(type)) return mFormats.get(type);
+    public MediaFormat getTrackFormat() {
+        if (mFormats.has()) return mFormats.getVideo();
         ensureExtractor();
         int trackCount = mExtractor.getTrackCount();
         MediaFormat format = null;
         for (int i = 0; i < trackCount; i++) {
             format = mExtractor.getTrackFormat(i);
             String mime = format.getString(MediaFormat.KEY_MIME);
-            if (type == TrackType.VIDEO && mime.startsWith("video/")) {
-                mIndex.set(TrackType.VIDEO, i);
+            if (mime.startsWith("video/")) {
+                mIndex.setVideo(i);
                 break;
             }
         }
-        mFormats.set(type, format);
+        mFormats.setVideo(format);
         return format;
     }
 
     @Override
-    public void releaseTrack(@NonNull TrackType type) {
-        mSelectedTracks.remove(type);
-        if (mSelectedTracks.isEmpty()) {
-            release();
-        }
-    }
-
-    protected void release() {
+    public void release() {
         try {
             mExtractor.release();
         } catch (Exception e) {

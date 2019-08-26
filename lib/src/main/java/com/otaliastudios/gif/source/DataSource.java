@@ -5,8 +5,6 @@ import android.media.MediaFormat;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import com.otaliastudios.gif.engine.TrackType;
-
 import java.nio.ByteBuffer;
 
 /**
@@ -22,14 +20,6 @@ public interface DataSource {
     int getOrientation();
 
     /**
-     * Metadata information. Returns the video location, or null.
-     *
-     * @return video location or null
-     */
-    @Nullable
-    double[] getLocation();
-
-    /**
      * Returns the video total duration in microseconds.
      *
      * @return duration in us
@@ -37,32 +27,17 @@ public interface DataSource {
     long getDurationUs();
 
     /**
-     * Called before starting to inspect the input format for this track.
-     * Can return null if this media does not include this track type.
+     * Returns a MediaFormat-like format for this GIF.
      *
-     * @param type track type
-     * @return format or null
+     * @return format
      */
-    @Nullable
-    MediaFormat getTrackFormat(@NonNull TrackType type);
+    @NonNull
+    MediaFormat getTrackFormat();
 
     /**
-     * Called before starting, but after {@link #getTrackFormat(TrackType)},
-     * to select the given track.
-     *
-     * @param type track type
+     * Called to notify that we'll start reading.
      */
-    void selectTrack(@NonNull TrackType type);
-
-    /**
-     * Returns true if we can read the given track at this point.
-     * If true if returned, source should expect a {@link #readTrack(Chunk)} call.
-     *
-     * @param type track type
-     * @return true if we can read this track now
-     */
-    @SuppressWarnings("BooleanMethodIsAlwaysInverted")
-    boolean canReadTrack(@NonNull TrackType type);
+    void start();
 
     /**
      * Called to read contents for the current track type.
@@ -89,10 +64,9 @@ public interface DataSource {
     boolean isDrained();
 
     /**
-     * Called to release resources for a given track.
-     * @param type track type
+     * Called to release resources.
      */
-    void releaseTrack(@NonNull TrackType type);
+    void release();
 
     /**
      * Represents a chunk of data.

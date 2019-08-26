@@ -7,7 +7,6 @@ import android.media.MediaFormat;
 import androidx.annotation.CallSuper;
 import androidx.annotation.NonNull;
 
-import com.otaliastudios.gif.engine.TrackType;
 import com.otaliastudios.gif.internal.MediaCodecBuffers;
 import com.otaliastudios.gif.sink.DataSink;
 import com.otaliastudios.gif.source.DataSource;
@@ -28,7 +27,6 @@ public abstract class BaseTrackTranscoder implements TrackTranscoder {
     private final DataSource mDataSource;
     private final DataSource.Chunk mDataChunk;
     private final DataSink mDataSink;
-    private final TrackType mTrackType;
 
     private final MediaCodec.BufferInfo mBufferInfo = new MediaCodec.BufferInfo();
     private MediaCodec mDecoder;
@@ -45,11 +43,9 @@ public abstract class BaseTrackTranscoder implements TrackTranscoder {
 
     @SuppressWarnings("WeakerAccess")
     protected BaseTrackTranscoder(@NonNull DataSource dataSource,
-                                  @NonNull DataSink dataSink,
-                                  @NonNull TrackType trackType) {
+                                  @NonNull DataSink dataSink) {
         mDataSource = dataSource;
         mDataSink = dataSink;
-        mTrackType = trackType;
         mDataChunk = new DataSource.Chunk();
     }
 
@@ -63,10 +59,7 @@ public abstract class BaseTrackTranscoder implements TrackTranscoder {
         onConfigureEncoder(desiredOutputFormat, mEncoder);
         onStartEncoder(desiredOutputFormat, mEncoder);
 
-        final MediaFormat inputFormat = mDataSource.getTrackFormat(mTrackType);
-        if (inputFormat == null) {
-            throw new IllegalArgumentException("Input format is null!");
-        }
+        final MediaFormat inputFormat = mDataSource.getTrackFormat();
         try {
             mDecoder = MediaCodec.createDecoderByType(inputFormat.getString(MediaFormat.KEY_MIME));
         } catch (IOException e) {
@@ -190,7 +183,7 @@ public abstract class BaseTrackTranscoder implements TrackTranscoder {
             throw new RuntimeException("Audio output format changed twice.");
         }
         mActualOutputFormat = format;
-        mDataSink.setTrackFormat(mTrackType, mActualOutputFormat);
+        mDataSink.setTrackFormat(mActualOutputFormat);
     }
 
     @SuppressWarnings("SameParameterValue")
@@ -204,10 +197,6 @@ public abstract class BaseTrackTranscoder implements TrackTranscoder {
             if (result < 0) return DRAIN_STATE_NONE;
             mIsExtractorEOS = true;
             mDecoder.queueInputBuffer(result, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM);
-            return DRAIN_STATE_NONE;
-        }
-
-        if (!mDataSource.canReadTrack(mTrackType)) {
             return DRAIN_STATE_NONE;
         }
 
@@ -285,7 +274,7 @@ public abstract class BaseTrackTranscoder implements TrackTranscoder {
             mEncoder.releaseOutputBuffer(result, false);
             return DRAIN_STATE_SHOULD_RETRY_IMMEDIATELY;
         }
-        mDataSink.writeTrack(mTrackType, mEncoderBuffers.getOutputBuffer(result), mBufferInfo);
+        mDataSink.writeTrack(mEncoderBuffers.getOutputBuffer(result), mBufferInfo);
         mEncoder.releaseOutputBuffer(result, false);
         return DRAIN_STATE_CONSUMED;
     }

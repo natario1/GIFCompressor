@@ -18,9 +18,6 @@ package com.otaliastudios.gif.transcode;
 import android.media.MediaFormat;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-
-import com.otaliastudios.gif.engine.TrackType;
 
 public interface TrackTranscoder {
 

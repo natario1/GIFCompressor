@@ -3,7 +3,6 @@ package com.otaliastudios.gif.source;
 import android.media.MediaExtractor;
 import android.media.MediaMetadataRetriever;
 
-import com.otaliastudios.gif.engine.TrackType;
 import com.otaliastudios.gif.internal.Logger;
 
 import java.io.FileDescriptor;
@@ -45,7 +44,7 @@ public class FilePathDataSource extends DefaultDataSource {
     }
 
     @Override
-    protected void release() {
+    public void release() {
         super.release();
         descriptor.release();
         if (stream != null) {

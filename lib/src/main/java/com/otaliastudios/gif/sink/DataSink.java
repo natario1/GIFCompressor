@@ -6,7 +6,6 @@ import android.media.MediaFormat;
 import androidx.annotation.NonNull;
 
 import com.otaliastudios.gif.engine.TrackStatus;
-import com.otaliastudios.gif.engine.TrackType;
 import com.otaliastudios.gif.transcode.TrackTranscoder;
 
 import java.nio.ByteBuffer;
@@ -28,42 +27,31 @@ public interface DataSink {
     void setOrientation(int orientation);
 
     /**
-     * Called before starting to set the location metadata.
-     * @param latitude latitude
-     * @param longitude longitude
-     */
-    void setLocation(double latitude, double longitude);
-
-    /**
      * Called before starting to set the status for the given
      * track. The sink object can check if the track is transcoding
      * using {@link TrackStatus#isTranscoding()}.
      *
-     * @param type track type
      * @param status status
      */
-    void setTrackStatus(@NonNull TrackType type,
-                        @NonNull TrackStatus status);
+    void setTrackStatus(@NonNull TrackStatus status);
 
     /**
      * Called by {@link TrackTranscoder}s when they have an output format.
      * This is not the output format chosen by the library user but rather the
      * output format determined by {@link MediaCodec}, which contains more information,
      * and should be inspected to know what kind of data we're collecting.
-     *  @param type the track type
+     *
      * @param format the track format
      */
-    void setTrackFormat(@NonNull TrackType type,
-                        @NonNull MediaFormat format);
+    void setTrackFormat(@NonNull MediaFormat format);
 
     /**
      * Called by {@link TrackTranscoder}s to write data into this sink.
-     *  @param type the track type
+     *
      * @param byteBuffer the data
      * @param bufferInfo the metadata
      */
-    void writeTrack(@NonNull TrackType type,
-                    @NonNull ByteBuffer byteBuffer,
+    void writeTrack(@NonNull ByteBuffer byteBuffer,
                     @NonNull MediaCodec.BufferInfo bufferInfo);
 
     /**

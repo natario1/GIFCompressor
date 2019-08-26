@@ -20,7 +20,6 @@ import android.media.MediaFormat;
 
 import androidx.annotation.NonNull;
 
-import com.otaliastudios.gif.engine.TrackType;
 import com.otaliastudios.gif.sink.DataSink;
 import com.otaliastudios.gif.source.DataSource;
 import com.otaliastudios.gif.time.TimeInterpolator;
@@ -33,7 +32,6 @@ public class PassThroughTrackTranscoder implements TrackTranscoder {
     private final DataSource mDataSource;
     private final DataSink mDataSink;
     private final DataSource.Chunk mDataChunk;
-    private final TrackType mTrackType;
     private final MediaCodec.BufferInfo mBufferInfo = new MediaCodec.BufferInfo();
     private boolean mIsEOS;
     private final MediaFormat mOutputFormat;
@@ -42,15 +40,10 @@ public class PassThroughTrackTranscoder implements TrackTranscoder {
 
     public PassThroughTrackTranscoder(@NonNull DataSource dataSource,
                                       @NonNull DataSink dataSink,
-                                      @NonNull TrackType trackType,
                                       @NonNull TimeInterpolator timeInterpolator) {
         mDataSource = dataSource;
         mDataSink = dataSink;
-        mTrackType = trackType;
-        mOutputFormat = dataSource.getTrackFormat(trackType);
-        if (mOutputFormat == null) {
-            throw new IllegalArgumentException("Output format is null!");
-        }
+        mOutputFormat = dataSource.getTrackFormat();
         int bufferSize = mOutputFormat.getInteger(MediaFormat.KEY_MAX_INPUT_SIZE);
         mDataChunk = new DataSource.Chunk();
         mDataChunk.buffer = ByteBuffer.allocateDirect(bufferSize).order(ByteOrder.nativeOrder());
@@ -64,26 +57,23 @@ public class PassThroughTrackTranscoder implements TrackTranscoder {
     public boolean transcode(boolean forceInputEos) {
         if (mIsEOS) return false;
         if (!mOutputFormatSet) {
-            mDataSink.setTrackFormat(mTrackType, mOutputFormat);
+            mDataSink.setTrackFormat(mOutputFormat);
             mOutputFormatSet = true;
         }
         if (mDataSource.isDrained() || forceInputEos) {
             mDataChunk.buffer.clear();
             mBufferInfo.set(0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM);
-            mDataSink.writeTrack(mTrackType, mDataChunk.buffer, mBufferInfo);
+            mDataSink.writeTrack(mDataChunk.buffer, mBufferInfo);
             mIsEOS = true;
             return true;
-        }
-        if (!mDataSource.canReadTrack(mTrackType)) {
-            return false;
         }
 
         mDataChunk.buffer.clear();
         mDataSource.readTrack(mDataChunk);
-        long timestampUs = mTimeInterpolator.interpolate(mTrackType, mDataChunk.timestampUs);
+        long timestampUs = mTimeInterpolator.interpolate(mDataChunk.timestampUs);
         int flags = mDataChunk.isKeyFrame ? MediaCodec.BUFFER_FLAG_SYNC_FRAME : 0;
         mBufferInfo.set(0, mDataChunk.bytes, timestampUs, flags);
-        mDataSink.writeTrack(mTrackType, mDataChunk.buffer, mBufferInfo);
+        mDataSink.writeTrack(mDataChunk.buffer, mBufferInfo);
         return true;
     }
 

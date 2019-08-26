@@ -3,12 +3,10 @@ package com.otaliastudios.gif.sink;
 import android.media.MediaCodec;
 import android.media.MediaFormat;
 import android.media.MediaMuxer;
-import android.os.Build;
 
 import androidx.annotation.NonNull;
 
 import com.otaliastudios.gif.engine.TrackStatus;
-import com.otaliastudios.gif.engine.TrackType;
 import com.otaliastudios.gif.internal.TrackTypeMap;
 import com.otaliastudios.gif.internal.Logger;
 
@@ -32,14 +30,11 @@ public class DefaultDataSink implements DataSink {
      * the muxer is still being started (waiting for output formats).
      */
     private static class QueuedSample {
-        private final TrackType mType;
         private final int mSize;
         private final long mTimeUs;
         private final int mFlags;
 
-        private QueuedSample(@NonNull TrackType type,
-                             @NonNull MediaCodec.BufferInfo bufferInfo) {
-            mType = type;
+        private QueuedSample(@NonNull MediaCodec.BufferInfo bufferInfo) {
             mSize = bufferInfo.size;
             mTimeUs = bufferInfo.presentationTimeUs;
             mFlags = bufferInfo.flags;
@@ -80,31 +75,24 @@ public class DefaultDataSink implements DataSink {
     }
 
     @Override
-    public void setLocation(double latitude, double longitude) {
-        if (Build.VERSION.SDK_INT >= 19) {
-            mMuxer.setLocation((float) latitude, (float) longitude);
-        }
+    public void setTrackStatus(@NonNull TrackStatus status) {
+        mStatus.setVideo(status);
     }
 
     @Override
-    public void setTrackStatus(@NonNull TrackType type, @NonNull TrackStatus status) {
-        mStatus.set(type, status);
-    }
-
-    @Override
-    public void setTrackFormat(@NonNull TrackType type, @NonNull MediaFormat format) {
-        boolean shouldValidate = mStatus.require(type) == TrackStatus.COMPRESSING;
+    public void setTrackFormat(@NonNull MediaFormat format) {
+        boolean shouldValidate = mStatus.requireVideo() == TrackStatus.COMPRESSING;
         if (shouldValidate) {
             mMuxerChecks.checkOutputFormat(format);
         }
-        mLastFormat.set(type, format);
+        mLastFormat.setVideo(format);
         startIfNeeded();
     }
 
     private void startIfNeeded() {
         if (mMuxerStarted) return;
-        boolean isTranscodingVideo = mStatus.require(TrackType.VIDEO).isTranscoding();
-        MediaFormat videoOutputFormat = mLastFormat.get(TrackType.VIDEO);
+        boolean isTranscodingVideo = mStatus.requireVideo().isTranscoding();
+        MediaFormat videoOutputFormat = mLastFormat.getVideo();
         boolean isVideoReady = videoOutputFormat != null || !isTranscodingVideo;
         if (!isVideoReady) return;
 
@@ -112,7 +100,7 @@ public class DefaultDataSink implements DataSink {
         // We will stop buffering data and we will start actually muxing it.
         if (isTranscodingVideo) {
             int videoIndex = mMuxer.addTrack(videoOutputFormat);
-            mMuxerIndex.set(TrackType.VIDEO, videoIndex);
+            mMuxerIndex.setVideo(videoIndex);
             LOG.v("Added track #" + videoIndex + " with " + videoOutputFormat.getString(MediaFormat.KEY_MIME) + " to muxer");
         }
         mMuxer.start();
@@ -121,11 +109,11 @@ public class DefaultDataSink implements DataSink {
     }
 
     @Override
-    public void writeTrack(@NonNull TrackType type, @NonNull ByteBuffer byteBuffer, @NonNull MediaCodec.BufferInfo bufferInfo) {
+    public void writeTrack(@NonNull ByteBuffer byteBuffer, @NonNull MediaCodec.BufferInfo bufferInfo) {
         if (mMuxerStarted) {
-            mMuxer.writeSampleData(mMuxerIndex.require(type), byteBuffer, bufferInfo);
+            mMuxer.writeSampleData(mMuxerIndex.requireVideo(), byteBuffer, bufferInfo);
         } else {
-            enqueue(type, byteBuffer, bufferInfo);
+            enqueue(byteBuffer, bufferInfo);
         }
     }
 
@@ -133,12 +121,10 @@ public class DefaultDataSink implements DataSink {
      * Enqueues the given byffer by writing it into our own buffer and
      * just storing its position and size.
      *
-     * @param type track type
      * @param buffer input buffer
      * @param bufferInfo input buffer info
      */
-    private void enqueue(@NonNull TrackType type,
-                         @NonNull ByteBuffer buffer,
+    private void enqueue(@NonNull ByteBuffer buffer,
                          @NonNull MediaCodec.BufferInfo bufferInfo) {
         if (mQueueBuffer == null) {
             mQueueBuffer = ByteBuffer.allocateDirect(BUFFER_SIZE).order(ByteOrder.nativeOrder());
@@ -146,7 +132,7 @@ public class DefaultDataSink implements DataSink {
         buffer.limit(bufferInfo.offset + bufferInfo.size);
         buffer.position(bufferInfo.offset);
         mQueueBuffer.put(buffer);
-        mQueue.add(new QueuedSample(type, bufferInfo));
+        mQueue.add(new QueuedSample(bufferInfo));
     }
 
     /**
@@ -163,7 +149,7 @@ public class DefaultDataSink implements DataSink {
         int offset = 0;
         for (QueuedSample sample : mQueue) {
             bufferInfo.set(offset, sample.mSize, sample.mTimeUs, sample.mFlags);
-            writeTrack(sample.mType, mQueueBuffer, bufferInfo);
+            writeTrack(mQueueBuffer, bufferInfo);
             offset += sample.mSize;
         }
         mQueue.clear();

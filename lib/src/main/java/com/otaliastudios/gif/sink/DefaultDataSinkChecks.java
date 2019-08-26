@@ -17,7 +17,6 @@ package com.otaliastudios.gif.sink;
 
 import android.media.MediaFormat;
 
-import com.otaliastudios.gif.engine.TrackType;
 import com.otaliastudios.gif.internal.Logger;
 import com.otaliastudios.gif.internal.MediaFormatConstants;
 import com.otaliastudios.gif.internal.AvcCsdUtils;

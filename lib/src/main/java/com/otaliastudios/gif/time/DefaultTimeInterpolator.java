@@ -1,9 +1,5 @@
 package com.otaliastudios.gif.time;
 
-import androidx.annotation.NonNull;
-
-import com.otaliastudios.gif.engine.TrackType;
-
 /**
  * A {@link TimeInterpolator} that does no time interpolation or correction -
  * it just returns the input time.
@@ -11,7 +7,7 @@ import com.otaliastudios.gif.engine.TrackType;
 public class DefaultTimeInterpolator implements TimeInterpolator {
 
     @Override
-    public long interpolate(@NonNull TrackType type, long time) {
+    public long interpolate(long time) {
         return time;
     }
 }

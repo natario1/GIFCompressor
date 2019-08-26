@@ -1,8 +1,5 @@
 package com.otaliastudios.gif.time;
 
-import androidx.annotation.NonNull;
-
-import com.otaliastudios.gif.engine.TrackType;
 import com.otaliastudios.gif.internal.TrackTypeMap;
 import com.otaliastudios.gif.internal.Logger;
 
@@ -42,11 +39,11 @@ public class SpeedTimeInterpolator implements TimeInterpolator {
     }
 
     @Override
-    public long interpolate(@NonNull TrackType type, long time) {
-        if (!mTrackData.has(type)) {
-            mTrackData.set(type, new TrackData());
+    public long interpolate(long time) {
+        if (!mTrackData.has()) {
+            mTrackData.setVideo(new TrackData());
         }
-        TrackData data = mTrackData.get(type);
+        TrackData data = mTrackData.getVideo();
         //noinspection ConstantConditions
         if (data.lastRealTime == Long.MIN_VALUE) {
             data.lastRealTime = time;
@@ -57,7 +54,7 @@ public class SpeedTimeInterpolator implements TimeInterpolator {
             data.lastRealTime = time;
             data.lastCorrectedTime += correctedDelta;
         }
-        LOG.i("Track:" + type + " inputTime:" + time + " outputTime:" + data.lastCorrectedTime);
+        LOG.i("inputTime:" + time + " outputTime:" + data.lastCorrectedTime);
         return data.lastCorrectedTime;
     }
 

@@ -6,7 +6,6 @@ import android.media.MediaFormat;
 import androidx.annotation.NonNull;
 
 import com.otaliastudios.gif.engine.TrackStatus;
-import com.otaliastudios.gif.engine.TrackType;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
@@ -28,32 +27,25 @@ public class MultiDataSink implements DataSink {
     }
 
     @Override
-    public void setLocation(double latitude, double longitude) {
+    public void setTrackStatus(@NonNull TrackStatus status) {
         for (DataSink sink : sinks) {
-            sink.setLocation(latitude, longitude);
+            sink.setTrackStatus(status);
         }
     }
 
     @Override
-    public void setTrackStatus(@NonNull TrackType type, @NonNull TrackStatus status) {
+    public void setTrackFormat(@NonNull MediaFormat format) {
         for (DataSink sink : sinks) {
-            sink.setTrackStatus(type, status);
+            sink.setTrackFormat(format);
         }
     }
 
     @Override
-    public void setTrackFormat(@NonNull TrackType type, @NonNull MediaFormat format) {
-        for (DataSink sink : sinks) {
-            sink.setTrackFormat(type, format);
-        }
-    }
-
-    @Override
-    public void writeTrack(@NonNull TrackType type, @NonNull ByteBuffer byteBuffer, @NonNull MediaCodec.BufferInfo bufferInfo) {
+    public void writeTrack(@NonNull ByteBuffer byteBuffer, @NonNull MediaCodec.BufferInfo bufferInfo) {
         int position = byteBuffer.position();
         int limit = byteBuffer.limit();
         for (DataSink sink : sinks) {
-            sink.writeTrack(type, byteBuffer, bufferInfo);
+            sink.writeTrack(byteBuffer, bufferInfo);
             byteBuffer.position(position);
             byteBuffer.limit(limit);
         }

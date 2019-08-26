@@ -16,12 +16,10 @@
 package com.otaliastudios.gif.transcode;
 
 import android.media.MediaCodec;
-import android.media.MediaExtractor;
 import android.media.MediaFormat;
 
 import androidx.annotation.NonNull;
 
-import com.otaliastudios.gif.engine.TrackType;
 import com.otaliastudios.gif.internal.MediaCodecBuffers;
 import com.otaliastudios.gif.sink.DataSink;
 import com.otaliastudios.gif.source.DataSource;
@@ -54,7 +52,7 @@ public class VideoTrackTranscoder extends BaseTrackTranscoder {
             @NonNull DataSink dataSink,
             @NonNull TimeInterpolator timeInterpolator,
             int rotation) {
-        super(dataSource, dataSink, TrackType.VIDEO);
+        super(dataSource, dataSink);
         mTimeInterpolator = timeInterpolator;
         mSourceRotation = dataSource.getOrientation();
         mExtraRotation = rotation;
@@ -159,7 +157,7 @@ public class VideoTrackTranscoder extends BaseTrackTranscoder {
             mEncoder.signalEndOfInputStream();
             decoder.releaseOutputBuffer(bufferIndex, false);
         } else {
-            long interpolatedTimeUs = mTimeInterpolator.interpolate(TrackType.VIDEO, presentationTimeUs);
+            long interpolatedTimeUs = mTimeInterpolator.interpolate(presentationTimeUs);
             if (mFrameDropper.shouldRenderFrame(interpolatedTimeUs)) {
                 decoder.releaseOutputBuffer(bufferIndex, true);
                 mDecoderOutputSurface.drawFrame();
