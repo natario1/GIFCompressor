@@ -20,8 +20,6 @@ import android.os.Handler;
 import com.otaliastudios.gif.engine.Engine;
 import com.otaliastudios.gif.sink.DataSink;
 import com.otaliastudios.gif.internal.Logger;
-import com.otaliastudios.gif.validator.Validator;
-import com.otaliastudios.gif.internal.ValidatorException;
 
 import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
@@ -46,7 +44,7 @@ public class GIFCompressor {
     /**
      * Constant for {@link GIFListener#onGIFCompressionCompleted(int)}:
      * transcoding was not executed because it was considered
-     * not necessary by the {@link Validator}.
+     * not necessary by the validator.
      */
     public static final int SUCCESS_NOT_NEEDED = 1;
 
@@ -132,10 +130,6 @@ public class GIFCompressor {
                     });
                     engine.transcode(options);
                     listenerWrapper.onGIFCompressionCompleted(SUCCESS_COMPRESSED);
-
-                } catch (ValidatorException e) {
-                    LOG.i("Validator has decided that the input is fine and transcoding is not necessary.");
-                    listenerWrapper.onGIFCompressionCompleted(SUCCESS_NOT_NEEDED);
 
                 } catch (Throwable e) {
                     // Check InterruptedException in e and in its causes.

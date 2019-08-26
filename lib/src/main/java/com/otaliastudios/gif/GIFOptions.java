@@ -22,8 +22,6 @@ import com.otaliastudios.gif.stretch.DefaultAudioStretcher;
 import com.otaliastudios.gif.time.DefaultTimeInterpolator;
 import com.otaliastudios.gif.time.SpeedTimeInterpolator;
 import com.otaliastudios.gif.time.TimeInterpolator;
-import com.otaliastudios.gif.validator.DefaultValidator;
-import com.otaliastudios.gif.validator.Validator;
 
 import java.io.FileDescriptor;
 import java.util.ArrayList;
@@ -45,7 +43,6 @@ public class GIFOptions {
     private List<DataSource> audioDataSources;
     private TrackStrategy audioTrackStrategy;
     private TrackStrategy videoTrackStrategy;
-    private Validator validator;
     private int rotation;
     private TimeInterpolator timeInterpolator;
     private AudioStretcher audioStretcher;
@@ -79,11 +76,6 @@ public class GIFOptions {
         return videoTrackStrategy;
     }
 
-    @NonNull
-    public Validator getValidator() {
-        return validator;
-    }
-
     public int getVideoRotation() {
         return rotation;
     }
@@ -111,7 +103,6 @@ public class GIFOptions {
         private Handler listenerHandler;
         private TrackStrategy audioTrackStrategy;
         private TrackStrategy videoTrackStrategy;
-        private Validator validator;
         private int rotation;
         private TimeInterpolator timeInterpolator;
         private AudioStretcher audioStretcher;
@@ -182,7 +173,7 @@ public class GIFOptions {
 
         /**
          * Sets the audio output strategy. If absent, this defaults to
-         * {@link com.otaliastudios.transcoder.strategy.DefaultAudioStrategy}.
+         * {@link com.otaliastudios.gif.strategy.DefaultAudioStrategy}.
          *
          * @param trackStrategy the desired strategy
          * @return this for chaining
@@ -230,21 +221,6 @@ public class GIFOptions {
         }
 
         /**
-         * Sets a validator to understand whether the transcoding process should
-         * stop before being started, based on the tracks status. Will default to
-         * {@link com.otaliastudios.transcoder.validator.DefaultValidator}.
-         *
-         * @param validator the validator
-         * @return this for chaining
-         */
-        @NonNull
-        @SuppressWarnings("unused")
-        public Builder setValidator(@Nullable Validator validator) {
-            this.validator = validator;
-            return this;
-        }
-
-        /**
          * The clockwise rotation to be applied to the input video frames.
          * Defaults to 0, which leaves the input rotation unchanged.
          *
@@ -261,7 +237,7 @@ public class GIFOptions {
         /**
          * Sets a {@link TimeInterpolator} to change the frames timestamps - either video or
          * audio or both - before they are written into the output file.
-         * Defaults to {@link com.otaliastudios.transcoder.time.DefaultTimeInterpolator}.
+         * Defaults to {@link com.otaliastudios.gif.time.DefaultTimeInterpolator}.
          *
          * @param timeInterpolator a time interpolator
          * @return this for chaining
@@ -275,7 +251,7 @@ public class GIFOptions {
 
         /**
          * Shorthand for calling {@link #setTimeInterpolator(TimeInterpolator)}
-         * and passing a {@link com.otaliastudios.transcoder.time.SpeedTimeInterpolator}.
+         * and passing a {@link com.otaliastudios.gif.time.SpeedTimeInterpolator}.
          * This interpolator can modify the video speed by the given factor.
          *
          * @param speedFactor a factor, greather than 0
@@ -339,9 +315,6 @@ public class GIFOptions {
             if (videoTrackStrategy == null) {
                 videoTrackStrategy = DefaultVideoStrategies.for720x1280();
             }
-            if (validator == null) {
-                validator = new DefaultValidator();
-            }
             if (timeInterpolator == null) {
                 timeInterpolator = new DefaultTimeInterpolator();
             }
@@ -359,7 +332,6 @@ public class GIFOptions {
             options.listenerHandler = listenerHandler;
             options.audioTrackStrategy = audioTrackStrategy;
             options.videoTrackStrategy = videoTrackStrategy;
-            options.validator = validator;
             options.rotation = rotation;
             options.timeInterpolator = timeInterpolator;
             options.audioStretcher = audioStretcher;

@@ -19,7 +19,6 @@ import android.media.MediaFormat;
 
 import com.otaliastudios.gif.GIFOptions;
 import com.otaliastudios.gif.internal.TrackTypeMap;
-import com.otaliastudios.gif.internal.ValidatorException;
 import com.otaliastudios.gif.sink.DataSink;
 import com.otaliastudios.gif.sink.InvalidOutputFormatException;
 import com.otaliastudios.gif.source.DataSource;
@@ -326,17 +325,6 @@ public class Engine {
         if (videoStatus.isTranscoding()) activeTracks++;
         if (audioStatus.isTranscoding()) activeTracks++;
         LOG.v("Duration (us): " + getTotalDurationUs());
-
-        // Pass to Validator.
-        //noinspection UnusedAssignment
-        boolean ignoreValidatorResult = false;
-        // If we have to apply some rotation, and the video should be transcoded,
-        // ignore any Validator trying to abort the operation. The operation must happen
-        // because we must apply the rotation.
-        ignoreValidatorResult = videoStatus.isTranscoding() && options.getVideoRotation() != 0;
-        if (!options.getValidator().validate(videoStatus, audioStatus) && !ignoreValidatorResult) {
-            throw new ValidatorException("Validator returned false.");
-        }
 
         // Do the actual transcoding work.
         try {

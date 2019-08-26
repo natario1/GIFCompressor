@@ -14,7 +14,6 @@ import android.widget.Toast;
 import com.otaliastudios.gif.GIFCompressor;
 import com.otaliastudios.gif.GIFListener;
 import com.otaliastudios.gif.GIFOptions;
-import com.otaliastudios.gif.engine.TrackStatus;
 import com.otaliastudios.gif.engine.TrackType;
 import com.otaliastudios.gif.internal.Logger;
 import com.otaliastudios.gif.sink.DataSink;
@@ -26,7 +25,6 @@ import com.otaliastudios.gif.strategy.TrackStrategy;
 import com.otaliastudios.gif.strategy.size.AspectRatioResizer;
 import com.otaliastudios.gif.strategy.size.FractionResizer;
 import com.otaliastudios.gif.strategy.size.PassThroughResizer;
-import com.otaliastudios.gif.validator.DefaultValidator;
 
 import java.io.File;
 import java.io.IOException;
@@ -269,13 +267,6 @@ public class GIFActivity extends AppCompatActivity implements
                 .setAudioTrackStrategy(mTranscodeAudioStrategy)
                 .setVideoTrackStrategy(mTranscodeVideoStrategy)
                 .setVideoRotation(rotation)
-                .setValidator(new DefaultValidator() {
-                    @Override
-                    public boolean validate(@NonNull TrackStatus videoStatus, @NonNull TrackStatus audioStatus) {
-                        mIsAudioOnly = !videoStatus.isTranscoding();
-                        return super.validate(videoStatus, audioStatus);
-                    }
-                })
                 .setSpeed(speed)
                 .compress();
     }
