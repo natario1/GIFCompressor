@@ -17,14 +17,14 @@ package com.otaliastudios.gif.sink;
 
 import androidx.annotation.NonNull;
 
-import com.otaliastudios.gif.Transcoder;
-import com.otaliastudios.gif.TranscoderListener;
-import com.otaliastudios.gif.TranscoderOptions;
+import com.otaliastudios.gif.GIFCompressor;
+import com.otaliastudios.gif.GIFListener;
+import com.otaliastudios.gif.GIFOptions;
 
 /**
  * One of the exceptions possibly thrown by
- * {@link Transcoder#transcode(TranscoderOptions)}, which means it can be
- * passed to {@link TranscoderListener#onTranscodeFailed(Throwable)}.
+ * {@link GIFCompressor#compress(GIFOptions)}, which means it can be
+ * passed to {@link GIFListener#onGIFCompressionFailed(Throwable)}.
  */
 public class InvalidOutputFormatException extends RuntimeException {
     InvalidOutputFormatException(@NonNull String detailMessage) {

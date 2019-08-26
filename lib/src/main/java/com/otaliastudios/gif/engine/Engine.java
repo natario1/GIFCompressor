@@ -17,7 +17,7 @@ package com.otaliastudios.gif.engine;
 
 import android.media.MediaFormat;
 
-import com.otaliastudios.gif.TranscoderOptions;
+import com.otaliastudios.gif.GIFOptions;
 import com.otaliastudios.gif.internal.TrackTypeMap;
 import com.otaliastudios.gif.internal.ValidatorException;
 import com.otaliastudios.gif.sink.DataSink;
@@ -55,7 +55,7 @@ public class Engine {
     public interface ProgressCallback {
 
         /**
-         * Called to notify progress. Same thread which initiated transcode is used.
+         * Called to notify progress. Same thread which initiated compress is used.
          * @param progress Progress in [0.0, 1.0] range, or negative value if progress is unknown.
          */
         void onProgress(double progress);
@@ -138,7 +138,7 @@ public class Engine {
                 && mTranscoders.require(type).get(current).isFinished();
     }
 
-    private void openCurrentStep(@NonNull TrackType type, @NonNull TranscoderOptions options) {
+    private void openCurrentStep(@NonNull TrackType type, @NonNull GIFOptions options) {
         int current = mCurrentStep.require(type);
         TrackStatus status = mStatuses.require(type);
 
@@ -200,7 +200,7 @@ public class Engine {
     }
 
     @NonNull
-    private TrackTranscoder getCurrentTrackTranscoder(@NonNull TrackType type, @NonNull TranscoderOptions options) {
+    private TrackTranscoder getCurrentTrackTranscoder(@NonNull TrackType type, @NonNull GIFOptions options) {
         int current = mCurrentStep.require(type);
         int last = mTranscoders.require(type).size() - 1;
         if (last == current) {
@@ -298,9 +298,9 @@ public class Engine {
      *
      * @param options Transcoding options.
      * @throws InvalidOutputFormatException when output format is not supported.
-     * @throws InterruptedException when cancel to transcode
+     * @throws InterruptedException when cancel to compress
      */
-    public void transcode(@NonNull TranscoderOptions options) throws InterruptedException {
+    public void transcode(@NonNull GIFOptions options) throws InterruptedException {
         mDataSink = options.getDataSink();
         mDataSources.setVideo(options.getVideoDataSources());
         mDataSources.setAudio(options.getAudioDataSources());

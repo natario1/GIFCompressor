@@ -19,7 +19,6 @@ import android.os.Handler;
 
 import com.otaliastudios.gif.engine.Engine;
 import com.otaliastudios.gif.sink.DataSink;
-import com.otaliastudios.gif.source.DataSource;
 import com.otaliastudios.gif.internal.Logger;
 import com.otaliastudios.gif.validator.Validator;
 import com.otaliastudios.gif.internal.ValidatorException;
@@ -34,24 +33,24 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import androidx.annotation.NonNull;
 
-public class Transcoder {
-    private static final String TAG = Transcoder.class.getSimpleName();
+public class GIFCompressor {
+    private static final String TAG = GIFCompressor.class.getSimpleName();
     private static final Logger LOG = new Logger(TAG);
 
     /**
-     * Constant for {@link TranscoderListener#onTranscodeCompleted(int)}.
+     * Constant for {@link GIFListener#onGIFCompressionCompleted(int)}.
      * Transcoding was executed successfully.
      */
-    public static final int SUCCESS_TRANSCODED = 0;
+    public static final int SUCCESS_COMPRESSED = 0;
 
     /**
-     * Constant for {@link TranscoderListener#onTranscodeCompleted(int)}:
+     * Constant for {@link GIFListener#onGIFCompressionCompleted(int)}:
      * transcoding was not executed because it was considered
      * not necessary by the {@link Validator}.
      */
     public static final int SUCCESS_NOT_NEEDED = 1;
 
-    private static volatile Transcoder sTranscoder;
+    private static volatile GIFCompressor sGIFCompressor;
 
     private class Factory implements ThreadFactory {
         private AtomicInteger count = new AtomicInteger(1);
@@ -64,7 +63,7 @@ public class Transcoder {
 
     private ThreadPoolExecutor mExecutor;
 
-    private Transcoder() {
+    private GIFCompressor() {
         // This executor will execute at most 'pool' tasks concurrently,
         // then queue all the others. CPU + 1 is used by AsyncTask.
         int pool = Runtime.getRuntime().availableProcessors() + 1;
@@ -76,15 +75,15 @@ public class Transcoder {
 
     @SuppressWarnings("WeakerAccess")
     @NonNull
-    public static Transcoder getInstance() {
-        if (sTranscoder == null) {
-            synchronized (Transcoder.class) {
-                if (sTranscoder == null) {
-                    sTranscoder = new Transcoder();
+    public static GIFCompressor getInstance() {
+        if (sGIFCompressor == null) {
+            synchronized (GIFCompressor.class) {
+                if (sGIFCompressor == null) {
+                    sGIFCompressor = new GIFCompressor();
                 }
             }
         }
-        return sTranscoder;
+        return sGIFCompressor;
     }
 
     /**
@@ -95,8 +94,8 @@ public class Transcoder {
      * @return an options builder
      */
     @NonNull
-    public static TranscoderOptions.Builder into(@NonNull String outPath) {
-        return new TranscoderOptions.Builder(outPath);
+    public static GIFOptions.Builder into(@NonNull String outPath) {
+        return new GIFOptions.Builder(outPath);
     }
 
     /**
@@ -107,19 +106,19 @@ public class Transcoder {
      * @return an options builder
      */
     @NonNull
-    public static TranscoderOptions.Builder into(@NonNull DataSink dataSink) {
-        return new TranscoderOptions.Builder(dataSink);
+    public static GIFOptions.Builder into(@NonNull DataSink dataSink) {
+        return new GIFOptions.Builder(dataSink);
     }
 
     /**
-     * Transcodes video file asynchronously.
+     * Compresses GIF file asynchronously.
      *
      * @param options The transcoder options.
-     * @return a Future that completes when transcoding is completed
+     * @return a Future that completes when compression is completed
      */
     @NonNull
-    public Future<Void> transcode(@NonNull final TranscoderOptions options) {
-        final TranscoderListener listenerWrapper = new ListenerWrapper(options.listenerHandler,
+    public Future<Void> compress(@NonNull final GIFOptions options) {
+        final GIFListener listenerWrapper = new ListenerWrapper(options.listenerHandler,
                 options.listener);
         return mExecutor.submit(new Callable<Void>() {
             @Override
@@ -128,15 +127,15 @@ public class Transcoder {
                     Engine engine = new Engine(new Engine.ProgressCallback() {
                         @Override
                         public void onProgress(final double progress) {
-                            listenerWrapper.onTranscodeProgress(progress);
+                            listenerWrapper.onGIFCompressionProgress(progress);
                         }
                     });
                     engine.transcode(options);
-                    listenerWrapper.onTranscodeCompleted(SUCCESS_TRANSCODED);
+                    listenerWrapper.onGIFCompressionCompleted(SUCCESS_COMPRESSED);
 
                 } catch (ValidatorException e) {
                     LOG.i("Validator has decided that the input is fine and transcoding is not necessary.");
-                    listenerWrapper.onTranscodeCompleted(SUCCESS_NOT_NEEDED);
+                    listenerWrapper.onGIFCompressionCompleted(SUCCESS_NOT_NEEDED);
 
                 } catch (Throwable e) {
                     // Check InterruptedException in e and in its causes.
@@ -148,16 +147,16 @@ public class Transcoder {
                     }
                     if (isInterrupted) {
                         LOG.i("Transcode canceled.", current);
-                        listenerWrapper.onTranscodeCanceled();
+                        listenerWrapper.onGIFCompressionCanceled();
 
                     } else if (e instanceof RuntimeException) {
                         LOG.e("Fatal error while transcoding, this might be invalid format or bug in engine or Android.", e);
-                        listenerWrapper.onTranscodeFailed(e);
+                        listenerWrapper.onGIFCompressionFailed(e);
                         throw e;
 
                     } else {
                         LOG.e("Unexpected error while transcoding", e);
-                        listenerWrapper.onTranscodeFailed(e);
+                        listenerWrapper.onGIFCompressionFailed(e);
                         throw e;
                     }
                 }
@@ -167,56 +166,56 @@ public class Transcoder {
     }
 
     /**
-     * Wraps a TranscoderListener and posts events on the given handler.
+     * Wraps a GIFListener and posts events on the given handler.
      */
-    private static class ListenerWrapper implements TranscoderListener {
+    private static class ListenerWrapper implements GIFListener {
 
         private Handler mHandler;
-        private TranscoderListener mListener;
+        private GIFListener mListener;
 
-        private ListenerWrapper(@NonNull Handler handler, @NonNull TranscoderListener listener) {
+        private ListenerWrapper(@NonNull Handler handler, @NonNull GIFListener listener) {
             mHandler = handler;
             mListener = listener;
         }
 
         @Override
-        public void onTranscodeCanceled() {
+        public void onGIFCompressionCanceled() {
             mHandler.post(new Runnable() {
                 @Override
                 public void run() {
-                    mListener.onTranscodeCanceled();
+                    mListener.onGIFCompressionCanceled();
                 }
             });
         }
 
         @Override
-        public void onTranscodeCompleted(final int successCode) {
+        public void onGIFCompressionCompleted(final int successCode) {
             mHandler.post(new Runnable() {
                 @Override
                 public void run() {
-                    mListener.onTranscodeCompleted(successCode);
+                    mListener.onGIFCompressionCompleted(successCode);
                 }
             });
         }
 
         @Override
-        public void onTranscodeFailed(@NonNull final Throwable exception) {
+        public void onGIFCompressionFailed(@NonNull final Throwable exception) {
             mHandler.post(new Runnable() {
                 @Override
                 public void run() {
-                    mListener.onTranscodeFailed(exception);
+                    mListener.onGIFCompressionFailed(exception);
                 }
             });
         }
 
         @Override
-        public void onTranscodeProgress(final double progress) {
+        public void onGIFCompressionProgress(final double progress) {
             // Don't think there's a safe way to avoid this allocation?
             // Other than creating a pool of runnables.
             mHandler.post(new Runnable() {
                 @Override
                 public void run() {
-                    mListener.onTranscodeProgress(progress);
+                    mListener.onGIFCompressionProgress(progress);
                 }
             });
         }

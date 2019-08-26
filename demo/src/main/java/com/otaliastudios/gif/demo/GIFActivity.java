@@ -3,7 +3,6 @@ package com.otaliastudios.gif.demo;
 import android.annotation.SuppressLint;
 import android.content.ClipData;
 import android.content.Intent;
-import android.media.MediaMuxer;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.SystemClock;
@@ -12,9 +11,9 @@ import android.widget.RadioGroup;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.otaliastudios.gif.Transcoder;
-import com.otaliastudios.gif.TranscoderListener;
-import com.otaliastudios.gif.TranscoderOptions;
+import com.otaliastudios.gif.GIFCompressor;
+import com.otaliastudios.gif.GIFListener;
+import com.otaliastudios.gif.GIFOptions;
 import com.otaliastudios.gif.engine.TrackStatus;
 import com.otaliastudios.gif.engine.TrackType;
 import com.otaliastudios.gif.internal.Logger;
@@ -38,8 +37,8 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.FileProvider;
 
 
-public class TranscoderActivity extends AppCompatActivity implements
-        TranscoderListener,
+public class GIFActivity extends AppCompatActivity implements
+        GIFListener,
         RadioGroup.OnCheckedChangeListener {
 
     private static final String TAG = "DemoApp";
@@ -255,7 +254,7 @@ public class TranscoderActivity extends AppCompatActivity implements
         mTranscodeStartTime = SystemClock.uptimeMillis();
         setIsTranscoding(true);
         DataSink sink = new DefaultDataSink(mTranscodeOutputFile.getAbsolutePath());
-        TranscoderOptions.Builder builder = Transcoder.into(sink);
+        GIFOptions.Builder builder = GIFCompressor.into(sink);
         if (mAudioReplacementUri == null) {
             if (mTranscodeInputUri1 != null) builder.addDataSource(this, mTranscodeInputUri1);
             if (mTranscodeInputUri2 != null) builder.addDataSource(this, mTranscodeInputUri2);
@@ -278,11 +277,11 @@ public class TranscoderActivity extends AppCompatActivity implements
                     }
                 })
                 .setSpeed(speed)
-                .transcode();
+                .compress();
     }
 
     @Override
-    public void onTranscodeProgress(double progress) {
+    public void onGIFCompressionProgress(double progress) {
         if (progress < 0) {
             mProgressView.setIndeterminate(true);
         } else {
@@ -292,38 +291,38 @@ public class TranscoderActivity extends AppCompatActivity implements
     }
 
     @Override
-    public void onTranscodeCompleted(int successCode) {
-        if (successCode == Transcoder.SUCCESS_TRANSCODED) {
+    public void onGIFCompressionCompleted(int successCode) {
+        if (successCode == GIFCompressor.SUCCESS_COMPRESSED) {
             LOG.w("Transcoding took " + (SystemClock.uptimeMillis() - mTranscodeStartTime) + "ms");
             onTranscodeFinished(true, "Transcoded file placed on " + mTranscodeOutputFile);
             File file = mTranscodeOutputFile;
             String type = mIsAudioOnly ? "audio/mp4" : "video/mp4";
-            Uri uri = FileProvider.getUriForFile(TranscoderActivity.this,
+            Uri uri = FileProvider.getUriForFile(GIFActivity.this,
                     FILE_PROVIDER_AUTHORITY, file);
             startActivity(new Intent(Intent.ACTION_VIEW)
                     .setDataAndType(uri, type)
                     .setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION));
-        } else if (successCode == Transcoder.SUCCESS_NOT_NEEDED) {
+        } else if (successCode == GIFCompressor.SUCCESS_NOT_NEEDED) {
             LOG.i("Transcoding was not needed.");
             onTranscodeFinished(true, "Transcoding not needed, source file untouched.");
         }
     }
 
     @Override
-    public void onTranscodeCanceled() {
-        onTranscodeFinished(false, "Transcoder canceled.");
+    public void onGIFCompressionCanceled() {
+        onTranscodeFinished(false, "GIFCompressor canceled.");
     }
 
     @Override
-    public void onTranscodeFailed(@NonNull Throwable exception) {
-        onTranscodeFinished(false, "Transcoder error occurred. " + exception.getMessage());
+    public void onGIFCompressionFailed(@NonNull Throwable exception) {
+        onTranscodeFinished(false, "GIFCompressor error occurred. " + exception.getMessage());
     }
 
     private void onTranscodeFinished(boolean isSuccess, String toastMessage) {
         mProgressView.setIndeterminate(false);
         mProgressView.setProgress(isSuccess ? PROGRESS_BAR_MAX : 0);
         setIsTranscoding(false);
-        Toast.makeText(TranscoderActivity.this, toastMessage, Toast.LENGTH_LONG).show();
+        Toast.makeText(GIFActivity.this, toastMessage, Toast.LENGTH_LONG).show();
     }
 
 }

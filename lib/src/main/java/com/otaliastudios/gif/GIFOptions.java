@@ -34,11 +34,11 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 /**
- * Collects transcoding options consumed by {@link Transcoder}.
+ * Collects transcoding options consumed by {@link GIFCompressor}.
  */
-public class TranscoderOptions {
+public class GIFOptions {
 
-    private TranscoderOptions() {}
+    private GIFOptions() {}
 
     private DataSink dataSink;
     private List<DataSource> videoDataSources;
@@ -51,7 +51,7 @@ public class TranscoderOptions {
     private AudioStretcher audioStretcher;
     private AudioResampler audioResampler;
 
-    TranscoderListener listener;
+    GIFListener listener;
     Handler listenerHandler;
 
     @NonNull
@@ -107,7 +107,7 @@ public class TranscoderOptions {
         private DataSink dataSink;
         private final List<DataSource> audioDataSources = new ArrayList<>();
         private final List<DataSource> videoDataSources = new ArrayList<>();
-        private TranscoderListener listener;
+        private GIFListener listener;
         private Handler listenerHandler;
         private TrackStrategy audioTrackStrategy;
         private TrackStrategy videoTrackStrategy;
@@ -209,13 +209,13 @@ public class TranscoderOptions {
         }
 
         @NonNull
-        public Builder setListener(@NonNull TranscoderListener listener) {
+        public Builder setListener(@NonNull GIFListener listener) {
             this.listener = listener;
             return this;
         }
 
         /**
-         * Sets an handler for {@link TranscoderListener} callbacks.
+         * Sets an handler for {@link GIFListener} callbacks.
          * If null, this will default to the thread that starts the transcoding, if it
          * has a looper, or the UI thread otherwise.
          *
@@ -318,7 +318,7 @@ public class TranscoderOptions {
         }
 
         @NonNull
-        public TranscoderOptions build() {
+        public GIFOptions build() {
             if (listener == null) {
                 throw new IllegalStateException("listener can't be null");
             }
@@ -351,7 +351,7 @@ public class TranscoderOptions {
             if (audioResampler == null) {
                 audioResampler = new DefaultAudioResampler();
             }
-            TranscoderOptions options = new TranscoderOptions();
+            GIFOptions options = new GIFOptions();
             options.listener = listener;
             options.audioDataSources = audioDataSources;
             options.videoDataSources = videoDataSources;
@@ -368,8 +368,8 @@ public class TranscoderOptions {
         }
 
         @NonNull
-        public Future<Void> transcode() {
-            return Transcoder.getInstance().transcode(build());
+        public Future<Void> compress() {
+            return GIFCompressor.getInstance().compress(build());
         }
     }
 }

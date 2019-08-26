@@ -63,7 +63,7 @@ public class VideoTrackTranscoder extends BaseTrackTranscoder {
     @Override
     protected void onConfigureEncoder(@NonNull MediaFormat format, @NonNull MediaCodec encoder) {
         // Flip the width and height as needed. This means rotating the VideoStrategy rotation
-        // by the amount that was set in the TranscoderOptions.
+        // by the amount that was set in the GIFOptions.
         // It is possible that the format has its own KEY_ROTATION, but we don't care, that will
         // be respected at playback time.
         int width = format.getInteger(MediaFormat.KEY_WIDTH);
@@ -99,7 +99,7 @@ public class VideoTrackTranscoder extends BaseTrackTranscoder {
         format.setInteger(MediaFormatConstants.KEY_ROTATION_DEGREES, 0);
 
         // The rotation we should apply is the intrinsic source rotation, plus any extra
-        // rotation that was set into the TranscoderOptions.
+        // rotation that was set into the GIFOptions.
         mDecoderOutputSurface = new VideoDecoderOutput();
         mDecoderOutputSurface.setRotation((mSourceRotation + mExtraRotation) % 360);
         decoder.configure(format, mDecoderOutputSurface.getSurface(), null, 0);
