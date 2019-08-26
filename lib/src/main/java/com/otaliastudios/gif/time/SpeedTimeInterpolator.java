@@ -14,7 +14,8 @@ public class SpeedTimeInterpolator implements TimeInterpolator {
     private final static Logger LOG = new Logger(TAG);
 
     private double mFactor;
-    private final TrackData mTrackData = new TrackData();
+    private long mLastRealTime = Long.MIN_VALUE;
+    private long mLastCorrectedTime = Long.MIN_VALUE;
 
     /**
      * Creates a new speed interpolator for the given factor.
@@ -39,22 +40,16 @@ public class SpeedTimeInterpolator implements TimeInterpolator {
 
     @Override
     public long interpolate(long time) {
-        TrackData data = mTrackData;
-        if (data.lastRealTime == Long.MIN_VALUE) {
-            data.lastRealTime = time;
-            data.lastCorrectedTime = time;
+        if (mLastRealTime == Long.MIN_VALUE) {
+            mLastRealTime = time;
+            mLastCorrectedTime = time;
         } else {
-            long realDelta = time - data.lastRealTime;
+            long realDelta = time - mLastRealTime;
             long correctedDelta = (long) ((double) realDelta / mFactor);
-            data.lastRealTime = time;
-            data.lastCorrectedTime += correctedDelta;
+            mLastRealTime = time;
+            mLastCorrectedTime += correctedDelta;
         }
-        LOG.i("inputTime:" + time + " outputTime:" + data.lastCorrectedTime);
-        return data.lastCorrectedTime;
-    }
-
-    private static class TrackData {
-        private long lastRealTime = Long.MIN_VALUE;
-        private long lastCorrectedTime = Long.MIN_VALUE;
+        LOG.i("inputTime:" + time + " outputTime:" + mLastCorrectedTime);
+        return mLastCorrectedTime;
     }
 }

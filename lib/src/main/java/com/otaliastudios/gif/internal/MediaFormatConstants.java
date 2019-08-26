@@ -31,7 +31,6 @@ public class MediaFormatConstants {
 
     // from https://android.googlesource.com/platform/frameworks/av/+/lollipop-release/media/libstagefright/MediaCodec.cpp#2197
     /** Included in MediaFormat from {@link android.media.MediaExtractor#getTrackFormat(int)}. Value is {@link java.nio.ByteBuffer}. */
-    @SuppressWarnings("WeakerAccess")
     public static final String KEY_AVC_SPS = "csd-0";
 
     /** Included in MediaFormat from {@link android.media.MediaExtractor#getTrackFormat(int)}. Value is {@link java.nio.ByteBuffer}. */

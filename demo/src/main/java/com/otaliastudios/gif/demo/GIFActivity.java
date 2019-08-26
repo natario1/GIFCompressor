@@ -17,8 +17,8 @@ import com.otaliastudios.gif.GIFOptions;
 import com.otaliastudios.gif.internal.Logger;
 import com.otaliastudios.gif.sink.DataSink;
 import com.otaliastudios.gif.sink.DefaultDataSink;
-import com.otaliastudios.gif.strategy.DefaultVideoStrategy;
-import com.otaliastudios.gif.strategy.TrackStrategy;
+import com.otaliastudios.gif.strategy.DefaultStrategy;
+import com.otaliastudios.gif.strategy.Strategy;
 import com.otaliastudios.gif.strategy.size.AspectRatioResizer;
 import com.otaliastudios.gif.strategy.size.FractionResizer;
 import com.otaliastudios.gif.strategy.size.PassThroughResizer;
@@ -60,7 +60,7 @@ public class GIFActivity extends AppCompatActivity implements
     private Uri mTranscodeInputUri3;
     private File mTranscodeOutputFile;
     private long mTranscodeStartTime;
-    private TrackStrategy mTranscodeVideoStrategy;
+    private Strategy mTranscodeVideoStrategy;
 
     @SuppressLint("SetTextI18n")
     @Override
@@ -107,7 +107,7 @@ public class GIFActivity extends AppCompatActivity implements
             case R.id.frames_24: frames = 24; break;
             case R.id.frames_30: frames = 30; break;
             case R.id.frames_60: frames = 60; break;
-            default: frames = DefaultVideoStrategy.DEFAULT_FRAME_RATE;
+            default: frames = DefaultStrategy.DEFAULT_FRAME_RATE;
         }
         float fraction;
         switch (mVideoResolutionGroup.getCheckedRadioButtonId()) {
@@ -122,7 +122,7 @@ public class GIFActivity extends AppCompatActivity implements
             case R.id.aspect_square: aspectRatio = 1F; break;
             default: aspectRatio = 0F;
         }
-        mTranscodeVideoStrategy = new DefaultVideoStrategy.Builder()
+        mTranscodeVideoStrategy = new DefaultStrategy.Builder()
                 .addResizer(aspectRatio > 0 ? new AspectRatioResizer(aspectRatio) : new PassThroughResizer())
                 .addResizer(new FractionResizer(fraction))
                 .frameRate(frames)
@@ -193,8 +193,8 @@ public class GIFActivity extends AppCompatActivity implements
         if (mTranscodeInputUri2 != null) builder.addDataSource(this, mTranscodeInputUri2);
         if (mTranscodeInputUri3 != null) builder.addDataSource(this, mTranscodeInputUri3);
         mTranscodeFuture = builder.setListener(this)
-                .setVideoTrackStrategy(mTranscodeVideoStrategy)
-                .setVideoRotation(rotation)
+                .setStrategy(mTranscodeVideoStrategy)
+                .setRotation(rotation)
                 .setSpeed(speed)
                 .compress();
     }

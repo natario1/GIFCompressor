@@ -8,19 +8,12 @@ import androidx.annotation.Nullable;
 import java.nio.ByteBuffer;
 
 /**
- * Represents the source of input data.
+ * Represents the source of input GIF data.
  */
 public interface DataSource {
 
     /**
-     * Metadata information. Returns the video orientation, or 0.
-     *
-     * @return video metadata orientation
-     */
-    int getOrientation();
-
-    /**
-     * Returns the video total duration in microseconds.
+     * Returns the GIF total duration in microseconds.
      *
      * @return duration in us
      */

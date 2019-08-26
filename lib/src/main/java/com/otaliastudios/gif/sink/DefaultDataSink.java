@@ -49,7 +49,6 @@ public class DefaultDataSink implements DataSink {
     private final MediaMuxer mMuxer;
     private final List<QueuedSample> mQueue = new ArrayList<>();
     private ByteBuffer mQueueBuffer;
-    private MediaFormat mLastFormat;
     private int mMuxerIndex;
     private final DefaultDataSinkChecks mMuxerChecks = new DefaultDataSinkChecks();
 
@@ -72,22 +71,19 @@ public class DefaultDataSink implements DataSink {
     }
 
     @Override
-    public void setTrackFormat(@NonNull MediaFormat format) {
+    public void setFormat(@NonNull MediaFormat format) {
         mMuxerChecks.checkOutputFormat(format);
-        mLastFormat = format;
         if (mMuxerStarted) return;
 
-        int videoIndex = mMuxer.addTrack(format);
-        mMuxerIndex = videoIndex;
-        LOG.v("Added track #" + videoIndex + " with " + format.getString(MediaFormat.KEY_MIME) + " to muxer");
-
+        mMuxerIndex = mMuxer.addTrack(format);
+        LOG.v("Added track #" + mMuxerIndex + " with " + format.getString(MediaFormat.KEY_MIME) + " to muxer");
         mMuxer.start();
         mMuxerStarted = true;
         drainQueue();
     }
 
     @Override
-    public void writeTrack(@NonNull ByteBuffer byteBuffer, @NonNull MediaCodec.BufferInfo bufferInfo) {
+    public void write(@NonNull ByteBuffer byteBuffer, @NonNull MediaCodec.BufferInfo bufferInfo) {
         if (mMuxerStarted) {
             mMuxer.writeSampleData(mMuxerIndex, byteBuffer, bufferInfo);
         } else {
@@ -127,7 +123,7 @@ public class DefaultDataSink implements DataSink {
         int offset = 0;
         for (QueuedSample sample : mQueue) {
             bufferInfo.set(offset, sample.mSize, sample.mTimeUs, sample.mFlags);
-            writeTrack(mQueueBuffer, bufferInfo);
+            write(mQueueBuffer, bufferInfo);
             offset += sample.mSize;
         }
         mQueue.clear();

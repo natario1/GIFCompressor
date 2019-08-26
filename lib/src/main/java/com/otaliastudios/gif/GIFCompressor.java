@@ -115,7 +115,7 @@ public class GIFCompressor {
                             listenerWrapper.onGIFCompressionProgress(progress);
                         }
                     });
-                    engine.transcode(options);
+                    engine.compress(options);
                     listenerWrapper.onGIFCompressionCompleted();
 
                 } catch (Throwable e) {
@@ -127,16 +127,16 @@ public class GIFCompressor {
                         if (current instanceof InterruptedException) isInterrupted = true;
                     }
                     if (isInterrupted) {
-                        LOG.i("Transcode canceled.", current);
+                        LOG.i("Compression canceled.", current);
                         listenerWrapper.onGIFCompressionCanceled();
 
                     } else if (e instanceof RuntimeException) {
-                        LOG.e("Fatal error while transcoding, this might be invalid format or bug in engine or Android.", e);
+                        LOG.e("Fatal error while compressing, this might be invalid format or bug in engine or Android.", e);
                         listenerWrapper.onGIFCompressionFailed(e);
                         throw e;
 
                     } else {
-                        LOG.e("Unexpected error while transcoding", e);
+                        LOG.e("Unexpected error while compressing", e);
                         listenerWrapper.onGIFCompressionFailed(e);
                         throw e;
                     }

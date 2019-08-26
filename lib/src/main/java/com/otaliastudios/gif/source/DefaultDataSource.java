@@ -83,17 +83,6 @@ public abstract class DefaultDataSource implements DataSource {
     }
 
     @Override
-    public int getOrientation() {
-        ensureMetadata();
-        String string = mMetadata.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION);
-        try {
-            return Integer.parseInt(string);
-        } catch (NumberFormatException ignore) {
-            return 0;
-        }
-    }
-
-    @Override
     public long getDurationUs() {
         ensureMetadata();
         try {

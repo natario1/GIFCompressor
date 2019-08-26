@@ -21,12 +21,9 @@ import com.otaliastudios.gif.GIFOptions;
 import com.otaliastudios.gif.sink.DataSink;
 import com.otaliastudios.gif.sink.InvalidOutputFormatException;
 import com.otaliastudios.gif.source.DataSource;
-import com.otaliastudios.gif.strategy.TrackStrategy;
 import com.otaliastudios.gif.time.TimeInterpolator;
-import com.otaliastudios.gif.transcode.NoOpTrackTranscoder;
-import com.otaliastudios.gif.transcode.PassThroughTrackTranscoder;
-import com.otaliastudios.gif.transcode.TrackTranscoder;
-import com.otaliastudios.gif.transcode.VideoTrackTranscoder;
+import com.otaliastudios.gif.transcode.Transcoder;
+import com.otaliastudios.gif.transcode.VideoTranscoder;
 import com.otaliastudios.gif.internal.Logger;
 
 import androidx.annotation.NonNull;
@@ -43,7 +40,7 @@ public class Engine {
     private static final String TAG = Engine.class.getSimpleName();
     private static final Logger LOG = new Logger(TAG);
 
-    private static final long SLEEP_TO_WAIT_TRACK_TRANSCODERS = 10;
+    private static final long TRANSCODER_SLEEP_TIME = 10;
     private static final long PROGRESS_INTERVAL_STEPS = 10;
 
 
@@ -58,7 +55,7 @@ public class Engine {
 
     private DataSink mDataSink;
     private List<DataSource> mDataSources = null;
-    private final List<TrackTranscoder> mTranscoders = new ArrayList<>();
+    private final List<Transcoder> mTranscoders = new ArrayList<>();
     private final List<TimeInterpolator> mInterpolators = new ArrayList<>();
     private int mCurrentStep = 0;
     private MediaFormat mOutputFormat = null;
@@ -86,67 +83,48 @@ public class Engine {
         }
     }
 
-    private void computeTrackStatus(@NonNull TrackStrategy strategy,
-                                    @NonNull List<DataSource> sources) {
-        MediaFormat outputFormat = new MediaFormat();
-        List<MediaFormat> inputFormats = new ArrayList<>();
-        for (DataSource source : sources) {
-            MediaFormat inputFormat = source.getTrackFormat();
-            inputFormats.add(inputFormat);
-        }
-        strategy.createOutputFormat(inputFormats, outputFormat);
-
-        mOutputFormat = outputFormat;
-    }
-
     private boolean isCompleted() {
-        if (mDataSources.isEmpty()) return true;
-        int current = mCurrentStep;
-        return current == mDataSources.size() - 1
-                && current == mTranscoders.size() - 1
-                && mTranscoders.get(current).isFinished();
+        return mCurrentStep == mDataSources.size() - 1
+                && mCurrentStep == mTranscoders.size() - 1
+                && mTranscoders.get(mCurrentStep).isFinished();
     }
 
     private void openCurrentStep(@NonNull GIFOptions options) {
-        int current = mCurrentStep;
-
         // Notify the data source that we'll be transcoding this track.
-        DataSource dataSource = mDataSources.get(current);
+        DataSource dataSource = mDataSources.get(mCurrentStep);
         dataSource.start();
 
         // Create a TimeInterpolator, wrapping the external one.
-        TimeInterpolator interpolator = createStepTimeInterpolator(current,
+        TimeInterpolator interpolator = createStepTimeInterpolator(mCurrentStep,
                 options.getTimeInterpolator());
         mInterpolators.add(interpolator);
 
         // Create a Transcoder for this track.
-        TrackTranscoder transcoder = new VideoTrackTranscoder(dataSource, mDataSink,
+        Transcoder transcoder = new VideoTranscoder(dataSource,
+                mDataSink,
                 interpolator,
-                options.getVideoRotation());
+                options.getRotation());
         transcoder.setUp(mOutputFormat);
         mTranscoders.add(transcoder);
     }
 
     private void closeCurrentStep() {
-        int current = mCurrentStep;
-        TrackTranscoder transcoder = mTranscoders.get(current);
-        DataSource dataSource = mDataSources.get(current);
-        transcoder.release();
-        dataSource.release();
-        mCurrentStep = current + 1;
+        mTranscoders.get(mCurrentStep).release();
+        mDataSources.get(mCurrentStep).release();
+        mCurrentStep = mCurrentStep + 1;
     }
 
     @NonNull
-    private TrackTranscoder getCurrentTrackTranscoder(@NonNull GIFOptions options) {
+    private Transcoder getCurrentStepTranscoder(@NonNull GIFOptions options) {
         int current = mCurrentStep;
         int last = mTranscoders.size() - 1;
         if (last == current) {
             // We have already created a transcoder for this step.
             // But this step might be completed and we might need to create a new one.
-            TrackTranscoder transcoder = mTranscoders.get(last);
+            Transcoder transcoder = mTranscoders.get(last);
             if (transcoder.isFinished()) {
                 closeCurrentStep();
-                return getCurrentTrackTranscoder(options);
+                return getCurrentStepTranscoder(options);
             } else {
                 return mTranscoders.get(current);
             }
@@ -186,11 +164,10 @@ public class Engine {
     }
 
     private long getTotalDurationUs() {
-        int current = mCurrentStep;
         long totalDurationUs = 0;
         for (int i = 0; i < mDataSources.size(); i++) {
             DataSource source = mDataSources.get(i);
-            if (i < current) { // getReadUs() is a better approximation for sure.
+            if (i < mCurrentStep) { // getReadUs() is a better approximation for sure.
                 totalDurationUs += source.getReadUs();
             } else {
                 totalDurationUs += source.getDurationUs();
@@ -199,74 +176,71 @@ public class Engine {
         return totalDurationUs;
     }
 
-    private long getTrackReadUs() {
-        int current = mCurrentStep;
+    private long getTotalReadUs() {
         long completedDurationUs = 0;
         for (int i = 0; i < mDataSources.size(); i++) {
             DataSource source = mDataSources.get(i);
-            if (i <= current) {
+            if (i <= mCurrentStep) {
                 completedDurationUs += source.getReadUs();
             }
         }
         return completedDurationUs;
     }
 
-    private double getTrackProgress() {
-        long readUs = getTrackReadUs();
+    private double computeProgress() {
+        long readUs = getTotalReadUs();
         long totalUs = getTotalDurationUs();
-        LOG.v("getTrackProgress - readUs:" + readUs + ", totalUs:" + totalUs);
+        LOG.v("computeProgress - readUs:" + readUs + ", totalUs:" + totalUs);
         if (totalUs == 0) totalUs = 1; // Avoid NaN
         return (double) readUs / (double) totalUs;
     }
 
     /**
-     * Performs transcoding. Blocks current thread.
+     * Compresses the GIF. Blocks current thread.
      *
-     * @param options Transcoding options.
+     * @param options GIF options.
      * @throws InvalidOutputFormatException when output format is not supported.
      * @throws InterruptedException when cancel to compress
      */
-    public void transcode(@NonNull GIFOptions options) throws InterruptedException {
+    public void compress(@NonNull GIFOptions options) throws InterruptedException {
         mDataSink = options.getDataSink();
-        mDataSources = options.getVideoDataSources();
+        mDataSources = options.getDataSources();
         mDataSink.setOrientation(0); // Explicitly set 0 to output - we rotate the textures instead.
 
-        computeTrackStatus(options.getVideoTrackStrategy(), options.getVideoDataSources());
+        MediaFormat outputFormat = new MediaFormat();
+        List<MediaFormat> inputFormats = new ArrayList<>();
+        for (DataSource source : options.getDataSources()) {
+            MediaFormat inputFormat = source.getTrackFormat();
+            inputFormats.add(inputFormat);
+        }
+        options.getStrategy().createOutputFormat(inputFormats, outputFormat);
+        mOutputFormat = outputFormat;
         LOG.v("Duration (us): " + getTotalDurationUs());
 
-        // Do the actual transcoding work.
+        // Do the actual work.
         try {
             long loopCount = 0;
-            boolean stepped = false;
-            boolean videoCompleted = false;
-            boolean forceVideoEos = false;
-            double videoProgress = 0;
-            while (!videoCompleted) {
-                LOG.v("new step: " + loopCount);
-
+            boolean advanced = false;
+            boolean isCompleted = false;
+            double progress = 0;
+            while (!isCompleted) {
+                LOG.v("new loop: " + loopCount);
                 if (Thread.interrupted()) {
                     throw new InterruptedException();
                 }
-                stepped = false;
+                advanced = false;
 
-                // First, check if we have to force an input end of stream for some track.
-                // This can happen, for example, if user adds 1 minute (video only) with 20 seconds
-                // of audio. The video track must be stopped once the audio stops.
-                long totalUs = getTotalDurationUs() + 100 /* tolerance */;
-                forceVideoEos = getTrackReadUs() > totalUs;
-
-                // Now step for transcoders that are not completed.
-                videoCompleted = isCompleted();
-                if (!videoCompleted) {
-                    stepped |= getCurrentTrackTranscoder(options).transcode(forceVideoEos);
+                isCompleted = isCompleted();
+                if (!isCompleted) {
+                    advanced = getCurrentStepTranscoder(options).transcode(false);
                 }
                 if (++loopCount % PROGRESS_INTERVAL_STEPS == 0) {
-                    videoProgress = getTrackProgress();
-                    LOG.v("progress - video:" + videoProgress);
-                    setProgress(videoProgress);
+                    progress = computeProgress();
+                    LOG.v("progress:" + progress);
+                    setProgress(progress);
                 }
-                if (!stepped) {
-                    Thread.sleep(SLEEP_TO_WAIT_TRACK_TRANSCODERS);
+                if (!advanced) {
+                    Thread.sleep(TRANSCODER_SLEEP_TIME);
                 }
             }
             mDataSink.stop();

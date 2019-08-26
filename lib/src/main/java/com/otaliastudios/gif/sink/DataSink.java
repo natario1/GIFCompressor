@@ -5,7 +5,7 @@ import android.media.MediaFormat;
 
 import androidx.annotation.NonNull;
 
-import com.otaliastudios.gif.transcode.TrackTranscoder;
+import com.otaliastudios.gif.transcode.Transcoder;
 
 import java.nio.ByteBuffer;
 
@@ -26,23 +26,23 @@ public interface DataSink {
     void setOrientation(int orientation);
 
     /**
-     * Called by {@link TrackTranscoder}s when they have an output format.
+     * Called by {@link Transcoder}s when they have an output format.
      * This is not the output format chosen by the library user but rather the
      * output format determined by {@link MediaCodec}, which contains more information,
      * and should be inspected to know what kind of data we're collecting.
      *
      * @param format the track format
      */
-    void setTrackFormat(@NonNull MediaFormat format);
+    void setFormat(@NonNull MediaFormat format);
 
     /**
-     * Called by {@link TrackTranscoder}s to write data into this sink.
+     * Called by {@link Transcoder}s to write data into this sink.
      *
      * @param byteBuffer the data
      * @param bufferInfo the metadata
      */
-    void writeTrack(@NonNull ByteBuffer byteBuffer,
-                    @NonNull MediaCodec.BufferInfo bufferInfo);
+    void write(@NonNull ByteBuffer byteBuffer,
+               @NonNull MediaCodec.BufferInfo bufferInfo);
 
     /**
      * Called when transcoders have stopped writing.

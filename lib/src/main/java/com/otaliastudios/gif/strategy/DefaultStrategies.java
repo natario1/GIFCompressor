@@ -3,22 +3,22 @@ package com.otaliastudios.gif.strategy;
 import androidx.annotation.NonNull;
 
 /**
- * Contains presets and utilities for defining a {@link DefaultVideoStrategy}.
+ * Contains presets and utilities for defining a {@link DefaultStrategy}.
  */
-public class DefaultVideoStrategies {
+public class DefaultStrategies {
 
-    private DefaultVideoStrategies() {}
+    private DefaultStrategies() {}
 
     /**
-     * A {@link DefaultVideoStrategy} that uses 720x1280.
+     * A {@link DefaultStrategy} that uses 720x1280.
      * This preset is ensured to work on any Android &gt;=4.3 devices by Android CTS,
      * assuming that the codec is available.
      *
      * @return a default video strategy
      */
     @NonNull
-    public static DefaultVideoStrategy for720x1280() {
-        return DefaultVideoStrategy.exact(720, 1280)
+    public static DefaultStrategy for720x1280() {
+        return DefaultStrategy.exact(720, 1280)
                 .bitRate(2L * 1000 * 1000)
                 .frameRate(30)
                 .keyFrameInterval(3F)
@@ -26,7 +26,7 @@ public class DefaultVideoStrategies {
     }
 
     /**
-     * A {@link DefaultVideoStrategy} that uses 360x480 (3:4),
+     * A {@link DefaultStrategy} that uses 360x480 (3:4),
      * ensured to work for 3:4 videos as explained by
      * https://developer.android.com/guide/topics/media/media-formats
      *
@@ -34,8 +34,8 @@ public class DefaultVideoStrategies {
      */
     @SuppressWarnings("unused")
     @NonNull
-    public static DefaultVideoStrategy for360x480() {
-        return DefaultVideoStrategy.exact(360, 480)
+    public static DefaultStrategy for360x480() {
+        return DefaultStrategy.exact(360, 480)
                 .bitRate(500L * 1000)
                 .frameRate(30)
                 .keyFrameInterval(3F)

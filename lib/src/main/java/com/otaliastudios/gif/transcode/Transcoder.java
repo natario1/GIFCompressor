@@ -19,16 +19,10 @@ import android.media.MediaFormat;
 
 import androidx.annotation.NonNull;
 
-public interface TrackTranscoder {
+public interface Transcoder {
 
     void setUp(@NonNull MediaFormat desiredOutputFormat);
 
-    /**
-     * Perform transcoding if output is available in any step of it.
-     * It assumes muxer has been started, so you should call muxer.start() first.
-     *
-     * @return true if data moved in pipeline.
-     */
     boolean transcode(boolean forceInputEos);
 
     boolean isFinished();

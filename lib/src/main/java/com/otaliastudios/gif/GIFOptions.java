@@ -11,8 +11,8 @@ import com.otaliastudios.gif.source.DataSource;
 import com.otaliastudios.gif.source.FileDescriptorDataSource;
 import com.otaliastudios.gif.source.FilePathDataSource;
 import com.otaliastudios.gif.source.UriDataSource;
-import com.otaliastudios.gif.strategy.DefaultVideoStrategies;
-import com.otaliastudios.gif.strategy.TrackStrategy;
+import com.otaliastudios.gif.strategy.DefaultStrategies;
+import com.otaliastudios.gif.strategy.Strategy;
 import com.otaliastudios.gif.time.DefaultTimeInterpolator;
 import com.otaliastudios.gif.time.SpeedTimeInterpolator;
 import com.otaliastudios.gif.time.TimeInterpolator;
@@ -26,15 +26,15 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 /**
- * Collects transcoding options consumed by {@link GIFCompressor}.
+ * Collects compression options consumed by {@link GIFCompressor}.
  */
 public class GIFOptions {
 
     private GIFOptions() {}
 
     private DataSink dataSink;
-    private List<DataSource> videoDataSources;
-    private TrackStrategy videoTrackStrategy;
+    private List<DataSource> dataSources;
+    private Strategy strategy;
     private int rotation;
     private TimeInterpolator timeInterpolator;
 
@@ -47,16 +47,16 @@ public class GIFOptions {
     }
 
     @NonNull
-    public List<DataSource> getVideoDataSources() {
-        return videoDataSources;
+    public List<DataSource> getDataSources() {
+        return dataSources;
     }
 
     @NonNull
-    public TrackStrategy getVideoTrackStrategy() {
-        return videoTrackStrategy;
+    public Strategy getStrategy() {
+        return strategy;
     }
 
-    public int getVideoRotation() {
+    public int getRotation() {
         return rotation;
     }
 
@@ -67,10 +67,10 @@ public class GIFOptions {
 
     public static class Builder {
         private DataSink dataSink;
-        private final List<DataSource> videoDataSources = new ArrayList<>();
+        private final List<DataSource> dataSources = new ArrayList<>();
         private GIFListener listener;
         private Handler listenerHandler;
-        private TrackStrategy videoTrackStrategy;
+        private Strategy strategy;
         private int rotation;
         private TimeInterpolator timeInterpolator;
 
@@ -85,7 +85,7 @@ public class GIFOptions {
         @NonNull
         @SuppressWarnings("WeakerAccess")
         public Builder addDataSource(@NonNull DataSource dataSource) {
-            videoDataSources.add(dataSource);
+            dataSources.add(dataSource);
             return this;
         }
 
@@ -108,16 +108,16 @@ public class GIFOptions {
         }
 
         /**
-         * Sets the video output strategy. If absent, this defaults to the 16:9
-         * strategy returned by {@link DefaultVideoStrategies#for720x1280()}.
+         * Sets the output strategy. If absent, this defaults to the 16:9
+         * strategy returned by {@link DefaultStrategies#for720x1280()}.
          *
-         * @param trackStrategy the desired strategy
+         * @param strategy the desired strategy
          * @return this for chaining
          */
         @NonNull
         @SuppressWarnings("unused")
-        public Builder setVideoTrackStrategy(@Nullable TrackStrategy trackStrategy) {
-            this.videoTrackStrategy = trackStrategy;
+        public Builder setStrategy(@Nullable Strategy strategy) {
+            this.strategy = strategy;
             return this;
         }
 
@@ -151,7 +151,7 @@ public class GIFOptions {
          */
         @NonNull
         @SuppressWarnings("unused")
-        public Builder setVideoRotation(int rotation) {
+        public Builder setRotation(int rotation) {
             this.rotation = rotation;
             return this;
         }
@@ -190,7 +190,7 @@ public class GIFOptions {
             if (listener == null) {
                 throw new IllegalStateException("listener can't be null");
             }
-            if (videoDataSources.isEmpty()) {
+            if (dataSources.isEmpty()) {
                 throw new IllegalStateException("we need at least one data source");
             }
             if (rotation != 0 && rotation != 90 && rotation != 180 && rotation != 270) {
@@ -201,18 +201,18 @@ public class GIFOptions {
                 if (looper == null) looper = Looper.getMainLooper();
                 listenerHandler = new Handler(looper);
             }
-            if (videoTrackStrategy == null) {
-                videoTrackStrategy = DefaultVideoStrategies.for720x1280();
+            if (strategy == null) {
+                strategy = DefaultStrategies.for720x1280();
             }
             if (timeInterpolator == null) {
                 timeInterpolator = new DefaultTimeInterpolator();
             }
             GIFOptions options = new GIFOptions();
             options.listener = listener;
-            options.videoDataSources = videoDataSources;
+            options.dataSources = dataSources;
             options.dataSink = dataSink;
             options.listenerHandler = listenerHandler;
-            options.videoTrackStrategy = videoTrackStrategy;
+            options.strategy = strategy;
             options.rotation = rotation;
             options.timeInterpolator = timeInterpolator;
             return options;

@@ -15,10 +15,10 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 /**
- * A base implementation of {@link TrackTranscoder} that reads
+ * A base implementation of {@link Transcoder} that reads
  * from {@link MediaExtractor} and does feeding and draining job.
  */
-public abstract class BaseTrackTranscoder implements TrackTranscoder {
+public abstract class BaseTranscoder implements Transcoder {
 
     private static final int DRAIN_STATE_NONE = 0;
     private static final int DRAIN_STATE_SHOULD_RETRY_IMMEDIATELY = 1;
@@ -42,8 +42,8 @@ public abstract class BaseTrackTranscoder implements TrackTranscoder {
     private boolean mIsExtractorEOS;
 
     @SuppressWarnings("WeakerAccess")
-    protected BaseTrackTranscoder(@NonNull DataSource dataSource,
-                                  @NonNull DataSink dataSink) {
+    protected BaseTranscoder(@NonNull DataSource dataSource,
+                             @NonNull DataSink dataSink) {
         mDataSource = dataSource;
         mDataSink = dataSink;
         mDataChunk = new DataSource.Chunk();
@@ -183,7 +183,7 @@ public abstract class BaseTrackTranscoder implements TrackTranscoder {
             throw new RuntimeException("Audio output format changed twice.");
         }
         mActualOutputFormat = format;
-        mDataSink.setTrackFormat(mActualOutputFormat);
+        mDataSink.setFormat(mActualOutputFormat);
     }
 
     @SuppressWarnings("SameParameterValue")
@@ -274,7 +274,7 @@ public abstract class BaseTrackTranscoder implements TrackTranscoder {
             mEncoder.releaseOutputBuffer(result, false);
             return DRAIN_STATE_SHOULD_RETRY_IMMEDIATELY;
         }
-        mDataSink.writeTrack(mEncoderBuffers.getOutputBuffer(result), mBufferInfo);
+        mDataSink.write(mEncoderBuffers.getOutputBuffer(result), mBufferInfo);
         mEncoder.releaseOutputBuffer(result, false);
         return DRAIN_STATE_CONSUMED;
     }

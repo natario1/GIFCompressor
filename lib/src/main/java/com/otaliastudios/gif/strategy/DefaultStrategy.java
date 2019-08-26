@@ -20,11 +20,11 @@ import androidx.annotation.NonNull;
 import java.util.List;
 
 /**
- * An {@link TrackStrategy} for video that converts it AVC with the given size.
+ * An {@link Strategy} for video that converts it AVC with the given size.
  * The input and output aspect ratio must match.
  */
-public class DefaultVideoStrategy implements TrackStrategy {
-    private final static String TAG = DefaultVideoStrategy.class.getSimpleName();
+public class DefaultStrategy implements Strategy {
+    private final static String TAG = DefaultStrategy.class.getSimpleName();
     private final static Logger LOG = new Logger(TAG);
 
     @SuppressWarnings("WeakerAccess")
@@ -200,15 +200,15 @@ public class DefaultVideoStrategy implements TrackStrategy {
         }
 
         @NonNull
-        public DefaultVideoStrategy build() {
-            return new DefaultVideoStrategy(options());
+        public DefaultStrategy build() {
+            return new DefaultStrategy(options());
         }
     }
 
     private final Options options;
 
     @SuppressWarnings("WeakerAccess")
-    public DefaultVideoStrategy(@NonNull Options options) {
+    public DefaultStrategy(@NonNull Options options) {
         this.options = options;
     }
 

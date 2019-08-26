@@ -33,9 +33,9 @@ import com.otaliastudios.gif.transcode.internal.VideoFrameDropper;
 import java.nio.ByteBuffer;
 
 // Refer: https://android.googlesource.com/platform/cts/+/lollipop-release/tests/tests/media/src/android/media/cts/ExtractDecodeEditEncodeMuxTest.java
-public class VideoTrackTranscoder extends BaseTrackTranscoder {
+public class VideoTranscoder extends BaseTranscoder {
 
-    private static final String TAG = VideoTrackTranscoder.class.getSimpleName();
+    private static final String TAG = VideoTranscoder.class.getSimpleName();
     @SuppressWarnings("unused")
     private static final Logger LOG = new Logger(TAG);
 
@@ -47,14 +47,14 @@ public class VideoTrackTranscoder extends BaseTrackTranscoder {
     private final int mSourceRotation;
     private final int mExtraRotation;
 
-    public VideoTrackTranscoder(
+    public VideoTranscoder(
             @NonNull DataSource dataSource,
             @NonNull DataSink dataSink,
             @NonNull TimeInterpolator timeInterpolator,
             int rotation) {
         super(dataSource, dataSink);
         mTimeInterpolator = timeInterpolator;
-        mSourceRotation = dataSource.getOrientation();
+        mSourceRotation = 0; // dataSource.getOrientation();
         mExtraRotation = rotation;
     }
 
