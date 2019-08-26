@@ -41,58 +41,57 @@ public class GIFActivity extends AppCompatActivity implements
 
     private static final String FILE_PROVIDER_AUTHORITY = "com.otaliastudios.gif.demo.fileprovider";
     private static final int REQUEST_CODE_PICK = 1;
-    private static final int REQUEST_CODE_PICK_AUDIO = 5;
     private static final int PROGRESS_BAR_MAX = 1000;
 
-    private RadioGroup mVideoFramesGroup;
-    private RadioGroup mVideoResolutionGroup;
-    private RadioGroup mVideoAspectGroup;
-    private RadioGroup mVideoRotationGroup;
+    private RadioGroup mFrameRateGroup;
+    private RadioGroup mResolutionGroup;
+    private RadioGroup mAspectRatioGroup;
+    private RadioGroup mRotationGroup;
     private RadioGroup mSpeedGroup;
 
     private ProgressBar mProgressView;
     private TextView mButtonView;
 
-    private boolean mIsTranscoding;
-    private Future<Void> mTranscodeFuture;
-    private Uri mTranscodeInputUri1;
-    private Uri mTranscodeInputUri2;
-    private Uri mTranscodeInputUri3;
-    private File mTranscodeOutputFile;
-    private long mTranscodeStartTime;
-    private Strategy mTranscodeVideoStrategy;
+    private boolean mIsCompressing;
+    private Future<Void> mCompressionFuture;
+    private Uri mInputUri1;
+    private Uri mInputUri2;
+    private Uri mInputUri3;
+    private File mOutputFile;
+    private long mStartTime;
+    private Strategy mStrategy;
 
     @SuppressLint("SetTextI18n")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         Logger.setLogLevel(Logger.LEVEL_VERBOSE);
-        setContentView(R.layout.activity_transcoder);
+        setContentView(R.layout.activity_gif);
 
         mButtonView = findViewById(R.id.button);
         mButtonView.setOnClickListener(v -> {
-            if (!mIsTranscoding) {
+            if (!mIsCompressing) {
                 startActivityForResult(new Intent(Intent.ACTION_GET_CONTENT)
-                        .setType("video/*")
+                        .setType("image/gif")
                         .putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true), REQUEST_CODE_PICK);
             } else {
-                mTranscodeFuture.cancel(true);
+                mCompressionFuture.cancel(true);
             }
         });
-        setIsTranscoding(false);
+        setIsCompressing(false);
 
         mProgressView = findViewById(R.id.progress);
         mProgressView.setMax(PROGRESS_BAR_MAX);
 
-        mVideoFramesGroup = findViewById(R.id.frames);
-        mVideoResolutionGroup = findViewById(R.id.resolution);
-        mVideoAspectGroup = findViewById(R.id.aspect);
-        mVideoRotationGroup = findViewById(R.id.rotation);
+        mFrameRateGroup = findViewById(R.id.frames);
+        mResolutionGroup = findViewById(R.id.resolution);
+        mAspectRatioGroup = findViewById(R.id.aspect);
+        mRotationGroup = findViewById(R.id.rotation);
         mSpeedGroup = findViewById(R.id.speed);
 
-        mVideoFramesGroup.setOnCheckedChangeListener(this);
-        mVideoResolutionGroup.setOnCheckedChangeListener(this);
-        mVideoAspectGroup.setOnCheckedChangeListener(this);
+        mFrameRateGroup.setOnCheckedChangeListener(this);
+        mResolutionGroup.setOnCheckedChangeListener(this);
+        mAspectRatioGroup.setOnCheckedChangeListener(this);
         syncParameters();
     }
 
@@ -103,35 +102,35 @@ public class GIFActivity extends AppCompatActivity implements
 
     private void syncParameters() {
         int frames;
-        switch (mVideoFramesGroup.getCheckedRadioButtonId()) {
+        switch (mFrameRateGroup.getCheckedRadioButtonId()) {
             case R.id.frames_24: frames = 24; break;
             case R.id.frames_30: frames = 30; break;
             case R.id.frames_60: frames = 60; break;
             default: frames = DefaultStrategy.DEFAULT_FRAME_RATE;
         }
         float fraction;
-        switch (mVideoResolutionGroup.getCheckedRadioButtonId()) {
+        switch (mResolutionGroup.getCheckedRadioButtonId()) {
             case R.id.resolution_half: fraction = 0.5F; break;
             case R.id.resolution_third: fraction = 1F / 3F; break;
             default: fraction = 1F;
         }
         float aspectRatio;
-        switch (mVideoAspectGroup.getCheckedRadioButtonId()) {
+        switch (mAspectRatioGroup.getCheckedRadioButtonId()) {
             case R.id.aspect_169: aspectRatio = 16F / 9F; break;
             case R.id.aspect_43: aspectRatio = 4F / 3F; break;
             case R.id.aspect_square: aspectRatio = 1F; break;
             default: aspectRatio = 0F;
         }
-        mTranscodeVideoStrategy = new DefaultStrategy.Builder()
+        mStrategy = new DefaultStrategy.Builder()
                 .addResizer(aspectRatio > 0 ? new AspectRatioResizer(aspectRatio) : new PassThroughResizer())
                 .addResizer(new FractionResizer(fraction))
                 .frameRate(frames)
                 .build();
     }
 
-    private void setIsTranscoding(boolean isTranscoding) {
-        mIsTranscoding = isTranscoding;
-        mButtonView.setText(mIsTranscoding ? "Cancel Transcoding" : "Select Video & Transcode");
+    private void setIsCompressing(boolean isCompressing) {
+        mIsCompressing = isCompressing;
+        mButtonView.setText(mIsCompressing ? "Cancel Compression" : "Select GIF(s) & Compress");
     }
 
     @Override
@@ -141,15 +140,15 @@ public class GIFActivity extends AppCompatActivity implements
                 && resultCode == RESULT_OK
                 && data != null) {
             if (data.getData() != null) {
-                mTranscodeInputUri1 = data.getData();
-                mTranscodeInputUri2 = null;
-                mTranscodeInputUri3 = null;
+                mInputUri1 = data.getData();
+                mInputUri2 = null;
+                mInputUri3 = null;
                 transcode();
             } else if (data.getClipData() != null) {
                 ClipData clipData = data.getClipData();
-                mTranscodeInputUri1 = clipData.getItemAt(0).getUri();
-                mTranscodeInputUri2 = clipData.getItemCount() >= 2 ? clipData.getItemAt(1).getUri() : null;
-                mTranscodeInputUri3 = clipData.getItemCount() >= 3 ? clipData.getItemAt(2).getUri() : null;
+                mInputUri1 = clipData.getItemAt(0).getUri();
+                mInputUri2 = clipData.getItemCount() >= 2 ? clipData.getItemAt(1).getUri() : null;
+                mInputUri3 = clipData.getItemCount() >= 3 ? clipData.getItemAt(2).getUri() : null;
                 transcode();
             }
         }
@@ -161,8 +160,8 @@ public class GIFActivity extends AppCompatActivity implements
             File outputDir = new File(getExternalFilesDir(null), "outputs");
             //noinspection ResultOfMethodCallIgnored
             outputDir.mkdir();
-            mTranscodeOutputFile = File.createTempFile("transcode_test", ".mp4", outputDir);
-            LOG.i("Transcoding into " + mTranscodeOutputFile);
+            mOutputFile = File.createTempFile("transcode_test", ".mp4", outputDir);
+            LOG.i("Transcoding into " + mOutputFile);
         } catch (IOException e) {
             LOG.e("Failed to create temporary file.", e);
             Toast.makeText(this, "Failed to create temporary file.", Toast.LENGTH_LONG).show();
@@ -170,7 +169,7 @@ public class GIFActivity extends AppCompatActivity implements
         }
 
         int rotation;
-        switch (mVideoRotationGroup.getCheckedRadioButtonId()) {
+        switch (mRotationGroup.getCheckedRadioButtonId()) {
             case R.id.rotation_90: rotation = 90; break;
             case R.id.rotation_180: rotation = 180; break;
             case R.id.rotation_270: rotation = 270; break;
@@ -185,15 +184,15 @@ public class GIFActivity extends AppCompatActivity implements
         }
 
         // Launch the transcoding operation.
-        mTranscodeStartTime = SystemClock.uptimeMillis();
-        setIsTranscoding(true);
-        DataSink sink = new DefaultDataSink(mTranscodeOutputFile.getAbsolutePath());
+        mStartTime = SystemClock.uptimeMillis();
+        setIsCompressing(true);
+        DataSink sink = new DefaultDataSink(mOutputFile.getAbsolutePath());
         GIFOptions.Builder builder = GIFCompressor.into(sink);
-        if (mTranscodeInputUri1 != null) builder.addDataSource(this, mTranscodeInputUri1);
-        if (mTranscodeInputUri2 != null) builder.addDataSource(this, mTranscodeInputUri2);
-        if (mTranscodeInputUri3 != null) builder.addDataSource(this, mTranscodeInputUri3);
-        mTranscodeFuture = builder.setListener(this)
-                .setStrategy(mTranscodeVideoStrategy)
+        if (mInputUri1 != null) builder.addDataSource(this, mInputUri1);
+        if (mInputUri2 != null) builder.addDataSource(this, mInputUri2);
+        if (mInputUri3 != null) builder.addDataSource(this, mInputUri3);
+        mCompressionFuture = builder.setListener(this)
+                .setStrategy(mStrategy)
                 .setRotation(rotation)
                 .setSpeed(speed)
                 .compress();
@@ -211,9 +210,9 @@ public class GIFActivity extends AppCompatActivity implements
 
     @Override
     public void onGIFCompressionCompleted() {
-        LOG.w("Transcoding took " + (SystemClock.uptimeMillis() - mTranscodeStartTime) + "ms");
-        onTranscodeFinished(true, "Transcoded file placed on " + mTranscodeOutputFile);
-        File file = mTranscodeOutputFile;
+        LOG.w("Compression took " + (SystemClock.uptimeMillis() - mStartTime) + "ms");
+        onCompressionFinished(true, "Compressed video placed on " + mOutputFile);
+        File file = mOutputFile;
         String type = "video/mp4";
         Uri uri = FileProvider.getUriForFile(GIFActivity.this,
                 FILE_PROVIDER_AUTHORITY, file);
@@ -224,18 +223,18 @@ public class GIFActivity extends AppCompatActivity implements
 
     @Override
     public void onGIFCompressionCanceled() {
-        onTranscodeFinished(false, "GIFCompressor canceled.");
+        onCompressionFinished(false, "GIFCompressor canceled.");
     }
 
     @Override
     public void onGIFCompressionFailed(@NonNull Throwable exception) {
-        onTranscodeFinished(false, "GIFCompressor error occurred. " + exception.getMessage());
+        onCompressionFinished(false, "GIFCompressor error occurred. " + exception.getMessage());
     }
 
-    private void onTranscodeFinished(boolean isSuccess, String toastMessage) {
+    private void onCompressionFinished(boolean isSuccess, @NonNull String toastMessage) {
         mProgressView.setIndeterminate(false);
         mProgressView.setProgress(isSuccess ? PROGRESS_BAR_MAX : 0);
-        setIsTranscoding(false);
+        setIsCompressing(false);
         Toast.makeText(GIFActivity.this, toastMessage, Toast.LENGTH_LONG).show();
     }
 
