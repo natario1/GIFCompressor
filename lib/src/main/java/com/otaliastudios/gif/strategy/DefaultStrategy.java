@@ -323,9 +323,20 @@ public class DefaultStrategy implements Strategy {
         return (frameRate == Integer.MAX_VALUE) ? -1 : frameRate;
     }
 
-    // Depends on the codec, but for AVC this is a reasonable default ?
-    // https://stackoverflow.com/a/5220554/4288782
+    /**
+     * Depends on the codec, but for AVC this is a reasonable default.
+     * https://stackoverflow.com/a/5220554/4288782
+     *
+     * However, GIF often have extremely low frame rates and I think that
+     * Android encoders add repeated frames when frame rate is too low.
+     * So let's add a min frame rate here into the computation.
+     *
+     * @param width width
+     * @param height height
+     * @param frameRate rate
+     * @return bitRate
+     */
     private static long estimateBitRate(int width, int height, int frameRate) {
-        return (long) (0.07F * 2 * width * height * frameRate);
+        return (long) (0.07F * 2 * width * height * Math.max(frameRate, 24));
     }
 }

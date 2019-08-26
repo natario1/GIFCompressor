@@ -1,5 +1,6 @@
 package com.otaliastudios.gif.transcode;
 
+import android.graphics.Bitmap;
 import android.media.MediaCodec;
 import android.media.MediaExtractor;
 import android.media.MediaFormat;
@@ -29,17 +30,13 @@ public abstract class BaseTranscoder implements Transcoder {
     private final DataSink mDataSink;
 
     private final MediaCodec.BufferInfo mBufferInfo = new MediaCodec.BufferInfo();
-    private MediaCodec mDecoder;
     private MediaCodec mEncoder;
-    private MediaCodecBuffers mDecoderBuffers;
     private MediaCodecBuffers mEncoderBuffers;
-    private boolean mDecoderStarted;
     private boolean mEncoderStarted;
     private MediaFormat mActualOutputFormat;
 
-    private boolean mIsDecoderEOS;
     private boolean mIsEncoderEOS;
-    private boolean mIsExtractorEOS;
+    private boolean mIsDataSourceEOS;
 
     @SuppressWarnings("WeakerAccess")
     protected BaseTranscoder(@NonNull DataSource dataSource,
@@ -58,16 +55,7 @@ public abstract class BaseTranscoder implements Transcoder {
         }
         onConfigureEncoder(desiredOutputFormat, mEncoder);
         onStartEncoder(desiredOutputFormat, mEncoder);
-
-        final MediaFormat inputFormat = mDataSource.getTrackFormat();
-        try {
-            mDecoder = MediaCodec.createDecoderByType(inputFormat.getString(MediaFormat.KEY_MIME));
-        } catch (IOException e) {
-            throw new IllegalStateException(e);
-        }
-        onConfigureDecoder(inputFormat, mDecoder);
-        onStartDecoder(inputFormat, mDecoder);
-        onCodecsStarted(inputFormat, desiredOutputFormat, mDecoder, mEncoder);
+        onStarted(mDataSource.getTrackFormat(), desiredOutputFormat, mEncoder);
     }
 
     /**
@@ -92,36 +80,13 @@ public abstract class BaseTranscoder implements Transcoder {
     }
 
     /**
-     * Wraps the configure operation on the decoder.
-     * @param format input format
-     * @param decoder decoder
-     */
-    protected void onConfigureDecoder(@NonNull MediaFormat format, @NonNull MediaCodec decoder) {
-        decoder.configure(format, null, null, 0);
-    }
-
-    /**
-     * Wraps the start operation on the decoder.
-     * @param format input format
-     * @param decoder decoder
-     */
-    @SuppressWarnings({"WeakerAccess", "unused"})
-    @CallSuper
-    protected void onStartDecoder(@NonNull MediaFormat format, @NonNull MediaCodec decoder) {
-        decoder.start();
-        mDecoderStarted = true;
-        mDecoderBuffers = new MediaCodecBuffers(decoder);
-    }
-
-    /**
-     * Called when both codecs have been started with the given formats.
+     * Called when codecs have been started with the given formats.
      * @param inputFormat input format
      * @param outputFormat output format
-     * @param decoder decoder
      * @param encoder encoder
      */
-    protected void onCodecsStarted(@NonNull MediaFormat inputFormat, @NonNull MediaFormat outputFormat,
-                                   @NonNull MediaCodec decoder, @NonNull MediaCodec encoder) {
+    protected void onStarted(@NonNull MediaFormat inputFormat, @NonNull MediaFormat outputFormat,
+                                   @NonNull MediaCodec encoder) {
     }
 
     @Override
@@ -131,14 +96,6 @@ public abstract class BaseTranscoder implements Transcoder {
 
     @Override
     public void release() {
-        if (mDecoder != null) {
-            if (mDecoderStarted) {
-                mDecoder.stop();
-                mDecoderStarted = false;
-            }
-            mDecoder.release();
-            mDecoder = null;
-        }
         if (mEncoder != null) {
             if (mEncoderStarted) {
                 mEncoder.stop();
@@ -155,22 +112,41 @@ public abstract class BaseTranscoder implements Transcoder {
         int status;
         while (drainEncoder(0) != DRAIN_STATE_NONE) busy = true;
         do {
-            status = drainDecoder(0);
+            status = drainSource(0, forceInputEos);
             if (status != DRAIN_STATE_NONE) busy = true;
             // NOTE: not repeating to keep from deadlock when encoder is full.
         } while (status == DRAIN_STATE_SHOULD_RETRY_IMMEDIATELY);
 
         while (feedEncoder(0)) busy = true;
-        while (feedDecoder(0, forceInputEos) != DRAIN_STATE_NONE) busy = true;
         return busy;
     }
 
+    @SuppressWarnings("SameParameterValue")
+    private int drainSource(long timeoutUs, boolean forceInputEos) {
+        if (mIsDataSourceEOS) {
+            return DRAIN_STATE_NONE;
+        }
+
+        if (mDataSource.isDrained() || forceInputEos) {
+            mIsDataSourceEOS = true;
+            return DRAIN_STATE_NONE;
+        }
+
+        mDataSource.read(mDataChunk);
+        onDrainSource(timeoutUs, mDataChunk.bitmap, mDataChunk.timestampUs, mDataSource.isDrained());
+        return DRAIN_STATE_CONSUMED;
+    }
+
     /**
-     * Called when the decoder has defined its actual output format.
-     * @param format format
+     * Called after source has been drained.
+     *
+     * @param timeoutUs timeout in us
+     * @param bitmap the source bitmap
+     * @param endOfStream whether this is the last time
      */
-    @CallSuper
-    protected void onDecoderOutputFormatChanged(@NonNull MediaCodec decoder, @NonNull MediaFormat format) {}
+    protected abstract void onDrainSource(long timeoutUs, @NonNull Bitmap bitmap,
+                                          long presentationTimeUs,
+                                          boolean endOfStream);
 
     /**
      * Called when the encoder has defined its actual output format.
@@ -187,62 +163,8 @@ public abstract class BaseTranscoder implements Transcoder {
     }
 
     @SuppressWarnings("SameParameterValue")
-    private int feedDecoder(long timeoutUs, boolean forceInputEos) {
-        if (mIsExtractorEOS) {
-            return DRAIN_STATE_NONE;
-        }
-
-        if (mDataSource.isDrained() || forceInputEos) {
-            int result = mDecoder.dequeueInputBuffer(timeoutUs);
-            if (result < 0) return DRAIN_STATE_NONE;
-            mIsExtractorEOS = true;
-            mDecoder.queueInputBuffer(result, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM);
-            return DRAIN_STATE_NONE;
-        }
-
-        final int result = mDecoder.dequeueInputBuffer(timeoutUs);
-        if (result < 0) return DRAIN_STATE_NONE;
-
-        mDataChunk.buffer = mDecoderBuffers.getInputBuffer(result);
-        mDataSource.read(mDataChunk);
-        mDecoder.queueInputBuffer(result,
-                0,
-                mDataChunk.bytes,
-                mDataChunk.timestampUs,
-                mDataChunk.isKeyFrame ? MediaCodec.BUFFER_FLAG_SYNC_FRAME : 0);
-        return DRAIN_STATE_CONSUMED;
-    }
-
-    @SuppressWarnings("SameParameterValue")
     private boolean feedEncoder(long timeoutUs) {
         return onFeedEncoder(mEncoder, mEncoderBuffers, timeoutUs);
-    }
-
-    @SuppressWarnings("SameParameterValue")
-    private int drainDecoder(long timeoutUs) {
-        if (mIsDecoderEOS) return DRAIN_STATE_NONE;
-        int result = mDecoder.dequeueOutputBuffer(mBufferInfo, timeoutUs);
-        switch (result) {
-            case MediaCodec.INFO_TRY_AGAIN_LATER:
-                return DRAIN_STATE_NONE;
-            case MediaCodec.INFO_OUTPUT_FORMAT_CHANGED:
-                onDecoderOutputFormatChanged(mDecoder, mDecoder.getOutputFormat());
-                return DRAIN_STATE_SHOULD_RETRY_IMMEDIATELY;
-            case MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED:
-                return DRAIN_STATE_SHOULD_RETRY_IMMEDIATELY;
-        }
-
-        boolean isEos = (mBufferInfo.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0;
-        boolean hasSize = mBufferInfo.size > 0;
-        if (isEos) mIsDecoderEOS = true;
-        if (isEos || hasSize) {
-            onDrainDecoder(mDecoder,
-                    result,
-                    mDecoderBuffers.getOutputBuffer(result),
-                    mBufferInfo.presentationTimeUs,
-                    isEos);
-        }
-        return DRAIN_STATE_CONSUMED;
     }
 
     @SuppressWarnings("SameParameterValue")
@@ -278,23 +200,6 @@ public abstract class BaseTranscoder implements Transcoder {
         mEncoder.releaseOutputBuffer(result, false);
         return DRAIN_STATE_CONSUMED;
     }
-
-    /**
-     * Called to drain the decoder. Implementors are required to call {@link MediaCodec#releaseOutputBuffer(int, boolean)}
-     * with the given bufferIndex at some point.
-     *
-     * @param decoder the decoder
-     * @param bufferIndex the buffer index to be released
-     * @param bufferData  the buffer data
-     * @param presentationTimeUs frame timestamp
-     * @param endOfStream whether we are in end of stream
-     */
-    protected abstract void onDrainDecoder(@NonNull MediaCodec decoder,
-                                           int bufferIndex,
-                                           @NonNull ByteBuffer bufferData,
-                                           long presentationTimeUs,
-                                           boolean endOfStream);
-
 
     /**
      * Called to feed the encoder with processed data.

@@ -91,14 +91,14 @@ public class GIFOptions {
 
         @NonNull
         @SuppressWarnings("unused")
-        public Builder addDataSource(@NonNull FileDescriptor fileDescriptor) {
-            return addDataSource(new FileDescriptorDataSource(fileDescriptor));
+        public Builder addDataSource(@NonNull Context context, @NonNull FileDescriptor fileDescriptor) {
+            return addDataSource(new FileDescriptorDataSource(context, fileDescriptor));
         }
 
         @NonNull
         @SuppressWarnings("unused")
-        public Builder addDataSource(@NonNull String inPath) {
-            return addDataSource(new FilePathDataSource(inPath));
+        public Builder addDataSource(@NonNull Context context, @NonNull String inPath) {
+            return addDataSource(new FilePathDataSource(context, inPath));
         }
 
         @NonNull

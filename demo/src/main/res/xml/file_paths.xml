@@ -2,5 +2,5 @@
 <paths>
     <external-path
         name="output_videos"
-        path="Android/data/com.otaliastudios.transcoder.demo/files/outputs" />
+        path="Android/data/com.otaliastudios.gif.demo/files/outputs" />
 </paths>

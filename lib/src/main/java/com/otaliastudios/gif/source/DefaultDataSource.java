@@ -98,7 +98,7 @@ public abstract class DefaultDataSource implements DataSource {
                 Field frameDelayField = frameClass.getDeclaredField("delay");
                 frameDelayField.setAccessible(true);
                 for (Object frame : frames) {
-                    durationUs += frameDelayField.getInt(frame);
+                    durationUs += frameDelayField.getInt(frame) * 1000L;
                 }
             } catch (Exception e) {
                 throw new RuntimeException(e);

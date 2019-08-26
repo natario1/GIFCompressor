@@ -1,6 +1,8 @@
 package com.otaliastudios.gif.transcode.internal;
 
 
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
 import android.graphics.SurfaceTexture;
 import android.opengl.Matrix;
 import android.view.Surface;
@@ -15,15 +17,8 @@ import com.otaliastudios.gif.internal.Logger;
 /**
  * The purpose of this class is to create a {@link Surface} associated to a certain GL texture.
  *
- * The Surface is exposed through {@link #getSurface()} and we expect someone to draw there.
- * Typically this will be a {@link android.media.MediaCodec} instance, using this surface as output.
- *
- * When {@link #drawFrame()} is called, this class will wait for a new frame from MediaCodec,
- * and draw it on the current EGL surface. The class itself does no GL initialization, and will
- * draw on whatever surface is current.
- *
- * NOTE: By default, the Surface will be using a BufferQueue in asynchronous mode, so we
- * can potentially drop frames.
+ * When {@link #drawFrame(Bitmap)} is called, this class will draw the bitmap onto that surface
+ * so that the SurfaceTexture receives it and we can pass this to OpenGL as soon as it is available.
  */
 public class VideoDecoderOutput {
     private static final String TAG = VideoDecoderOutput.class.getSimpleName();
@@ -71,6 +66,15 @@ public class VideoDecoderOutput {
                 }
             }
         });
+    }
+
+    /**
+     * Sets the frame size, should be called before drawing anything.
+     * @param width frame width
+     * @param height frame height
+     */
+    public void setSize(int width, int height) {
+        mSurfaceTexture.setDefaultBufferSize(width, height);
         mSurface = new Surface(mSurfaceTexture);
     }
 
@@ -94,15 +98,6 @@ public class VideoDecoderOutput {
     }
 
     /**
-     * Returns a Surface to draw onto.
-     * @return the output surface
-     */
-    @NonNull
-    public Surface getSurface() {
-        return mSurface;
-    }
-
-    /**
      * Discard all resources held by this class, notably the EGL context.
      */
     public void release() {
@@ -118,12 +113,27 @@ public class VideoDecoderOutput {
     }
 
     /**
-     * Waits for a new frame drawn into our surface (see {@link #getSurface()}),
-     * then draws it using OpenGL.
+     * Draws a Bitmap into our surface, then waits for it to be available to
+     * the SurfaceTexture (not sure this is needed anymore), then renders
+     * through OpenGL.
      */
-    public void drawFrame() {
+    public void drawFrame(@NonNull Bitmap bitmap) {
+        drawBitmap(bitmap);
         awaitNewFrame();
-        drawNewFrame();
+        renderNewFrame();
+    }
+
+    private void drawBitmap(@NonNull Bitmap bitmap) {
+        Canvas canvas = mSurface.lockCanvas(null);
+        if (bitmap.getWidth() != canvas.getWidth() || bitmap.getHeight() != canvas.getHeight()) {
+            throw new RuntimeException("Unexpected width / height." +
+                    " bw:" + bitmap.getWidth() +
+                    " bh:" + bitmap.getHeight() +
+                    " cw:" + canvas.getWidth() +
+                    " ch:" + canvas.getHeight());
+        }
+        canvas.drawBitmap(bitmap, 0, 0, null);
+        mSurface.unlockCanvasAndPost(canvas);
     }
 
     /**
@@ -139,8 +149,6 @@ public class VideoDecoderOutput {
                     // stalling the test if it doesn't arrive.
                     mFrameAvailableLock.wait(NEW_IMAGE_TIMEOUT_MILLIS);
                     if (!mFrameAvailable) {
-                        // TODO: if "spurious wakeup", continue while loop
-                        // TODO: what does this mean? ^
                         throw new RuntimeException("Surface frame wait timed out");
                     }
                 } catch (InterruptedException ie) {
@@ -156,7 +164,7 @@ public class VideoDecoderOutput {
     /**
      * Draws the data from SurfaceTexture onto the current EGL surface.
      */
-    private void drawNewFrame() {
+    private void renderNewFrame() {
         mSurfaceTexture.getTransformMatrix(mProgram.getTextureTransform());
         // Invert the scale.
         float glScaleX = 1F / mScaleX;

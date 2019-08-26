@@ -15,6 +15,7 @@
  */
 package com.otaliastudios.gif.transcode;
 
+import android.graphics.Bitmap;
 import android.media.MediaCodec;
 import android.media.MediaFormat;
 
@@ -44,7 +45,6 @@ public class VideoTranscoder extends BaseTranscoder {
     private MediaCodec mEncoder; // Keep this since we want to signal EOS on it.
     private VideoFrameDropper mFrameDropper;
     private final TimeInterpolator mTimeInterpolator;
-    private final int mSourceRotation;
     private final int mExtraRotation;
 
     public VideoTranscoder(
@@ -54,7 +54,6 @@ public class VideoTranscoder extends BaseTranscoder {
             int rotation) {
         super(dataSource, dataSink);
         mTimeInterpolator = timeInterpolator;
-        mSourceRotation = 0; // dataSource.getOrientation();
         mExtraRotation = rotation;
     }
 
@@ -79,42 +78,24 @@ public class VideoTranscoder extends BaseTranscoder {
     }
 
     @Override
-    protected void onConfigureDecoder(@NonNull MediaFormat format, @NonNull MediaCodec decoder) {
-        // Just a sanity check that the rotation coming from DataSource is not different from
-        // the one found in the DataSource's MediaFormat for video.
-        int sourceRotation = 0;
-        if (format.containsKey(MediaFormatConstants.KEY_ROTATION_DEGREES)) {
-            sourceRotation = format.getInteger(MediaFormatConstants.KEY_ROTATION_DEGREES);
-        }
-        if (sourceRotation != mSourceRotation) {
-            throw new RuntimeException("Unexpected difference in rotation." +
-                    " DataSource:" + mSourceRotation +
-                    " MediaFormat:" + sourceRotation);
-        }
-
-        // Decoded video is rotated automatically in Android 5.0 lollipop. Turn off here because we don't want to encode rotated one.
-        // refer: https://android.googlesource.com/platform/frameworks/av/+blame/lollipop-release/media/libstagefright/Utils.cpp
-        format.setInteger(MediaFormatConstants.KEY_ROTATION_DEGREES, 0);
+    protected void onStarted(@NonNull MediaFormat inputFormat, @NonNull MediaFormat outputFormat, @NonNull MediaCodec encoder) {
+        super.onStarted(inputFormat, outputFormat, encoder);
+        mEncoder = encoder;
 
         // The rotation we should apply is the intrinsic source rotation, plus any extra
         // rotation that was set into the GIFOptions.
         mDecoderOutputSurface = new VideoDecoderOutput();
-        mDecoderOutputSurface.setRotation((mSourceRotation + mExtraRotation) % 360);
-        decoder.configure(format, mDecoderOutputSurface.getSurface(), null, 0);
-    }
+        mDecoderOutputSurface.setRotation(mExtraRotation % 360);
 
-    @Override
-    protected void onCodecsStarted(@NonNull MediaFormat inputFormat, @NonNull MediaFormat outputFormat, @NonNull MediaCodec decoder, @NonNull MediaCodec encoder) {
-        super.onCodecsStarted(inputFormat, outputFormat, decoder, encoder);
+        // Frame dropping support.
         mFrameDropper = VideoFrameDropper.newDropper(
                 inputFormat.getInteger(MediaFormat.KEY_FRAME_RATE),
                 outputFormat.getInteger(MediaFormat.KEY_FRAME_RATE));
-        mEncoder = encoder;
 
         // Cropping support.
         // Ignoring any outputFormat KEY_ROTATION (which is applied at playback time), the rotation
         // difference between input and output is mSourceRotation + mExtraRotation.
-        int rotation = (mSourceRotation + mExtraRotation) % 360;
+        int rotation = mExtraRotation % 360;
         boolean flip = (rotation % 180) != 0;
         float inputWidth = inputFormat.getInteger(MediaFormat.KEY_WIDTH);
         float inputHeight = inputFormat.getInteger(MediaFormat.KEY_HEIGHT);
@@ -128,6 +109,8 @@ public class VideoTranscoder extends BaseTranscoder {
         } else if (inputRatio < outputRatio) { // Input taller. We have a scaleY.
             scaleY = outputRatio / inputRatio;
         }
+
+        mDecoderOutputSurface.setSize((int) inputWidth, (int) inputHeight);
         mDecoderOutputSurface.setScale(scaleX, scaleY);
     }
 
@@ -152,19 +135,14 @@ public class VideoTranscoder extends BaseTranscoder {
     }
 
     @Override
-    protected void onDrainDecoder(@NonNull MediaCodec decoder, int bufferIndex, @NonNull ByteBuffer bufferData, long presentationTimeUs, boolean endOfStream) {
+    protected void onDrainSource(long timeoutUs, @NonNull Bitmap bitmap, long presentationTimeUs, boolean endOfStream) {
+        long interpolatedTimeUs = mTimeInterpolator.interpolate(presentationTimeUs);
+        if (mFrameDropper.shouldRenderFrame(interpolatedTimeUs)) {
+            mDecoderOutputSurface.drawFrame(bitmap);
+            mEncoderInputSurface.onFrame(interpolatedTimeUs);
+        }
         if (endOfStream) {
             mEncoder.signalEndOfInputStream();
-            decoder.releaseOutputBuffer(bufferIndex, false);
-        } else {
-            long interpolatedTimeUs = mTimeInterpolator.interpolate(presentationTimeUs);
-            if (mFrameDropper.shouldRenderFrame(interpolatedTimeUs)) {
-                decoder.releaseOutputBuffer(bufferIndex, true);
-                mDecoderOutputSurface.drawFrame();
-                mEncoderInputSurface.onFrame(interpolatedTimeUs);
-            } else {
-                decoder.releaseOutputBuffer(bufferIndex, false);
-            }
         }
     }
 }
