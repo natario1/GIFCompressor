@@ -6,7 +6,7 @@ ext {
     libVersion = '0.1.0'
     libGroup = 'com.otaliastudios.gif'
     libName = 'GIFCompressor'
-    libDescription = 'Compresses your GIFs to lightweight MP4 using hardware accelerated encoders.'
+    libDescription = 'Compresses your GIFs into lightweight MP4 video using fast, hardware accelerated encoders. Supports cropping, rotation, GIF concatenation and much more.'
     libArtifactId = 'compressor'
     githubUrl = "https://github.com/natario1/${libName}"
     githubGit = "https://github.com/natario1/${libName}.git"
