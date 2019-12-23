@@ -26,6 +26,7 @@ android {
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionName libVersion
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 }
 
@@ -33,6 +34,11 @@ dependencies {
     api "com.github.bumptech.glide:glide:4.9.0"
     api "com.otaliastudios.opengl:egloo:0.2.3"
     api "androidx.annotation:annotation:1.1.0"
+
+    androidTestImplementation 'androidx.test:runner:1.2.0'
+    androidTestImplementation 'androidx.test:rules:1.2.0'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.1'
+    androidTestImplementation 'org.mockito:mockito-android:2.28.2'
 }
 
 install.repositories.mavenInstaller.pom.project {
@@ -68,11 +74,9 @@ def bintrayUser
 def bintrayKey
 def hasBintray = false
 if (System.getenv('TRAVIS') == 'true') {
-    if (System.getenv('TRAVIS_SECURE_ENV_VARS') == 'true') {
-        bintrayUser = System.getenv("BINTRAY_USER")
-        bintrayKey = System.getenv("BINTRAY_KEY")
-        hasBintray = true
-    }
+    bintrayUser = System.getenv("BINTRAY_USER")
+    bintrayKey = System.getenv("BINTRAY_KEY")
+    hasBintray = true
 } else {
     Properties props = new Properties()
     props.load(project.rootProject.file('local.properties').newDataInputStream())
