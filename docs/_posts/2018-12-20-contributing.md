@@ -40,6 +40,7 @@ will let us discuss the problem, take design decisions and have a reference to t
 If you can, please write tests. We are planning to work on improving the library test coverage soon.
 
 ## License
+
 This project is licensed under Apache 2.0.
 
 ```
