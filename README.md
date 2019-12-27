@@ -5,7 +5,7 @@
 &#10240;  <!-- Hack to add whitespace -->
 
 <p align="center">
-  <img src="docs/static/banner.png" width="100%">
+  <img src="docs/static/banner.png" width="100%"> 
 </p>
 
 *Looking for a complete and powerful video transcoder? Take a look at our [Transcoder](https://github.com/natario1/Transcoder).*
