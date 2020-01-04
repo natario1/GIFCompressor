@@ -1,7 +1,6 @@
 ---
 layout: page
 title: "Validators"
-subtitle: "Validate or abort the transcoding process"
 description: "Validate or abort the transcoding process"
 category: docs
 date: 2018-12-20 20:02:08

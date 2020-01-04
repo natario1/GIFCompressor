@@ -1,7 +1,6 @@
 ---
 layout: page
 title: "Strategies"
-subtitle: "How to choose compression options"
 description: "How to choose compression options"
 category: docs
 date: 2018-12-20 20:02:08
@@ -97,7 +96,7 @@ DefaultStrategy strategy = new DefaultStrategy.Builder()
         .build();
 ```
 
-## Compatibility
+### Compatibility
 
 As stated pretty much everywhere, **not all codecs/devices/manufacturers support all sizes/options**.
 This is a complex issue which has no easy solution - a wrong size can lead to a compression error 

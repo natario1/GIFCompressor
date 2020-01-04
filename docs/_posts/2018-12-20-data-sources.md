@@ -1,7 +1,6 @@
 ---
 layout: page
 title: "Data Sources"
-subtitle: "Sources of media data"
 description: "Sources of media data"
 category: docs
 date: 2018-12-20 20:02:08
@@ -19,17 +18,17 @@ GIFCompressor.into(filePath)
         .compress()
 ```
 
-#### UriDataSource
+##### UriDataSource
 
 The Android friendly source can be created with `new UriDataSource(context, uri)` or simply
 using `addDataSource(context, uri)` in the compression builder.
 
-#### FileDescriptorDataSource
+##### FileDescriptorDataSource
 
 A data source backed by a file descriptor. Use `new FileDescriptorDataSource(context, descriptor)` or
 simply `addDataSource(context, descriptor)` in the compression builder.
 
-#### FilePathDataSource
+##### FilePathDataSource
 
 A data source backed by a file absolute path. Use `new FilePathDataSource(context, path)` or
 simply `addDataSource(context, path)` in the compression builder.

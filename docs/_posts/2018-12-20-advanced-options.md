@@ -1,7 +1,6 @@
 ---
 layout: page
 title: "Advanced Options"
-subtitle: "Advanced compression options"
 description: "Advanced compression options"
 category: docs
 date: 2018-12-20 20:02:08

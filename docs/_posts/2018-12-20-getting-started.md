@@ -1,7 +1,6 @@
 ---
 layout: page
 title: "Getting Started"
-subtitle: "Simple guide to compress your first GIF"
 description: "Simple guide to compress your first GIF"
 category: about
 date: 2018-12-20 17:48:58
