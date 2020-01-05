@@ -2,8 +2,6 @@
 layout: page
 title: "Advanced Options"
 description: "Advanced compression options"
-category: docs
-date: 2018-12-20 20:02:08
 order: 5
 disqus: 1
 ---

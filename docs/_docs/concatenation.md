@@ -2,8 +2,6 @@
 layout: page
 title: "GIF Concatenation"
 description: "How to concatenate GIF segments"
-category: docs
-date: 2018-12-20 20:02:08
 order: 2
 disqus: 1
 ---
