@@ -32,7 +32,7 @@ android {
 
 dependencies {
     api "com.github.bumptech.glide:glide:4.9.0"
-    api "com.otaliastudios.opengl:egloo:0.2.3"
+    api "com.otaliastudios.opengl:egloo:0.4.0"
     api "androidx.annotation:annotation:1.1.0"
 
     androidTestImplementation 'androidx.test:runner:1.2.0'

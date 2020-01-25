@@ -13,6 +13,7 @@ import androidx.annotation.NonNull;
 import com.otaliastudios.opengl.draw.GlRect;
 import com.otaliastudios.opengl.program.GlTextureProgram;
 import com.otaliastudios.gif.internal.Logger;
+import com.otaliastudios.opengl.texture.GlTexture;
 
 /**
  * The purpose of this class is to create a {@link Surface} associated to a certain GL texture.
@@ -45,14 +46,16 @@ public class VideoDecoderOutput {
      * new one). Creates a Surface that can be passed to MediaCodec.configure().
      */
     public VideoDecoderOutput() {
+        GlTexture texture = new GlTexture();
         mProgram = new GlTextureProgram();
+        mProgram.setTexture(texture);
         mDrawable = new GlRect();
 
         // Even if we don't access the SurfaceTexture after the constructor returns, we
         // still need to keep a reference to it.  The Surface doesn't retain a reference
         // at the Java level, so if we don't either then the object can get GCed, which
         // causes the native finalizer to run.
-        mSurfaceTexture = new SurfaceTexture(mProgram.getTextureId());
+        mSurfaceTexture = new SurfaceTexture(texture.getId());
         mSurfaceTexture.setOnFrameAvailableListener(new SurfaceTexture.OnFrameAvailableListener() {
             @Override
             public void onFrameAvailable(SurfaceTexture surfaceTexture) {
